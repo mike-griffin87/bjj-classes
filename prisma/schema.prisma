@@ -1,0 +1,30 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Class {
+  id          Int      @id @default(autoincrement())
+  date        DateTime
+  classType   String
+  instructor  String
+  technique   String
+  description String
+  hours       Float?
+  style       String   // "gi" or "nogi"
+  url         String?
+  createdAt   DateTime @default(now())
+  performance   Performance @default(NONE)
+  performanceNotes String?
+}
+
+enum Performance {
+  NONE
+  POOR
+  AVERAGE
+  EXCELLENT
+}
