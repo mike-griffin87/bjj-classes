@@ -22,6 +22,10 @@ dist
 prisma/dev.db
 prisma/dev.db-journal
 
+# Any Prisma SQLite files & backups
+prisma/*.db*
+prisma/*.sqlite*
+
 # OS
 .DS_Store
 Thumbs.db
