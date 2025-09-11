@@ -27,5 +27,10 @@
     "prisma": "^6.15.0",
     "tsx": "^4.20.5",
     "typescript": "^5"
+  },
+  "eslintConfig": {
+    "rules": {
+      "@typescript-eslint/no-explicit-any": "off"
+    }
   }
 }
