@@ -100,7 +100,7 @@ export default function Home() {
             : { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }
         }
       >
-        <h1 style={{ margin: 0, fontSize: isMobile ? 20 : undefined }}>BJJ Classes</h1>
+        <h1 style={{ margin: 0, fontSize: isMobile ? 20 : undefined }}>BJJ Classes v1.0</h1>
         {isMobile ? (
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12, color: "#374151" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -173,22 +173,6 @@ export default function Home() {
           }}
         />
       )}
-      {/* Version badge (fixed at bottom center) */}
-      <div
-        aria-label="app-version"
-        style={{
-          position: "fixed",
-          left: "50%",
-          bottom: "calc(env(safe-area-inset-bottom) + 8px)",
-          transform: "translateX(-50%)",
-          fontSize: 12,
-          color: "#6b7280",
-          opacity: 0.9,
-          pointerEvents: "none"
-        }}
-      >
-        v0.1
-      </div>
     </div>
   );
 }
