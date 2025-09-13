@@ -142,7 +142,7 @@ export default function ClassesFilter({ classes, onRowClick, onAddClick, onTotal
   const clearMonths = () => setMonths([]);
 
   const filtered = useMemo(() => {
-    const q = query.toLowerCase();
+    const q = (query ?? "").toLowerCase();
     return classes.filter((c) => {
       if (year !== "all") {
         const y = getYear(c.date);
@@ -154,7 +154,7 @@ export default function ClassesFilter({ classes, onRowClick, onAddClick, onTotal
       }
       if (q === "") return true;
       const desc = c.description?.toLowerCase() ?? "";
-      const tech = c.technique.toLowerCase();
+      const tech = (c.technique ?? "").toLowerCase();
       return desc.includes(q) || tech.includes(q);
     });
   }, [classes, year, months, query]);
