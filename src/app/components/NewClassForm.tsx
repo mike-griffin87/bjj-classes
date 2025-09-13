@@ -289,8 +289,12 @@ export default function NewClassForm({
       borderRadius: 10,
       border: "1px solid #e5e7eb",
       width: "100%",
-      fontSize: 14,
+      fontSize: 16,            // avoid iOS zoom + unify height
       lineHeight: 1.4,
+      minHeight: 44,           // consistent control height on iPhone
+      background: "#fff",      // force light mode for inputs
+      color: "#111",
+      WebkitAppearance: "none" as any,
     } as React.CSSProperties,
     label: {
       fontWeight: 600,
@@ -415,7 +419,7 @@ export default function NewClassForm({
               </div>
 
               {/* Row 1: Date + Instructor (locked side-by-side) */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, alignItems: "stretch" }}>
                 <div>
                   <label style={input.label}>Date</label>
                   <input
@@ -443,7 +447,7 @@ export default function NewClassForm({
                       aria-expanded={insOpen}
                       style={{
                         ...input.base,
-                        background: "#f9fafb",
+                        background: "#fff",
                         borderColor: "#e5e7eb",
                         display: "flex",
                         alignItems: "center",
@@ -522,7 +526,7 @@ export default function NewClassForm({
                         aria-expanded={ctOpen}
                         style={{
                           ...input.base,
-                          background: "#f9fafb",
+                          background: "#fff",
                           borderColor: "#e5e7eb",
                           display: "flex",
                           alignItems: "center",
@@ -591,7 +595,7 @@ export default function NewClassForm({
                       aria-expanded={teOpen}
                       style={{
                         ...input.base,
-                        background: "#f9fafb",
+                        background: "#fff",
                         borderColor: "#e5e7eb",
                         display: "flex",
                         alignItems: "center",

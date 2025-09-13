@@ -26,7 +26,14 @@ export default function ClassesView({ classes }: { classes: ClassRow[] }) {
   }, []);
 
   return (
-    <div>
+    <div
+      role="main"
+      style={{
+        background: "#fff",
+        padding: "12px",
+        paddingBottom: "calc(env(safe-area-inset-bottom) + 88px)",
+      }}
+    >
       {/* Filter + Table. NOTE: ClassesFilter must forward onRowClick to ClassTable. */}
       {/* After this file is added, we will update ClassesFilter.tsx to accept an optional onRowClick prop and pass it to ClassTable. */}
       {/* @ts-expect-error onRowClick will be added to ClassesFilter next */}

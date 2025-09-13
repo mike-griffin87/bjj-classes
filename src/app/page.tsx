@@ -173,6 +173,22 @@ export default function Home() {
           }}
         />
       )}
+      {/* Version badge (fixed at bottom center) */}
+      <div
+        aria-label="app-version"
+        style={{
+          position: "fixed",
+          left: "50%",
+          bottom: "calc(env(safe-area-inset-bottom) + 8px)",
+          transform: "translateX(-50%)",
+          fontSize: 12,
+          color: "#6b7280",
+          opacity: 0.9,
+          pointerEvents: "none"
+        }}
+      >
+        v0.1
+      </div>
     </div>
   );
 }

@@ -36,6 +36,21 @@ const MONTH_LABELS = [
   "Dec",
 ];
 
+const ctlBase: React.CSSProperties = {
+  padding: "10px 12px",
+  borderRadius: 12,
+  border: "1px solid #e5e7eb",
+  fontSize: 16,
+  lineHeight: 1.2,
+  minHeight: 44,
+  height: 44,
+  background: "#fff",
+  color: "#111",
+  boxSizing: "border-box",
+  WebkitAppearance: "none" as any,
+  appearance: "none" as any,
+};
+
 function getYear(d: string | Date) {
   const dt = new Date(d);
   return dt.getFullYear();
@@ -242,19 +257,11 @@ export default function ClassesFilter({ classes, onRowClick, onAddClick, onTotal
               setYear(v === "all" ? "all" : Number(v));
             }}
             style={{
-              padding: "4px 8px",
+              ...ctlBase,
               paddingRight: 34,
-              borderRadius: 6,
               fontWeight: 600,
-              fontSize: 13,
-              border: "1px solid #e5e7eb",
-              background: "#fff",
-              appearance: "none",
-              WebkitAppearance: "none" as any,
-              MozAppearance: "none" as any,
-              height: 40,
               width: "100%",
-              boxSizing: "border-box",
+              MozAppearance: "none" as any,
             }}
           >
             <option value="all">All</option>
@@ -300,22 +307,15 @@ export default function ClassesFilter({ classes, onRowClick, onAddClick, onTotal
         aria-haspopup="listbox"
         title={selectedMonthLabels.length ? selectedMonthLabels.join(', ') : 'All months'}
         style={{
-          padding: '6px 12px',
+          ...ctlBase,
           paddingRight: 34,
-          borderRadius: 6,
-          fontWeight: 600,
-          fontSize: 13,
-          border: '1px solid #e5e7eb',
-          background: '#fff',
-          height: 40,
-          width: '100%',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'flex-start',
           gap: 8,
           flex: '1 1 0',
           minWidth: 0,
-          boxSizing: 'border-box',
+          width: '100%',
           position: 'relative',
         }}
       >
@@ -431,17 +431,12 @@ export default function ClassesFilter({ classes, onRowClick, onAddClick, onTotal
           value={query}
           onChange={e => setQuery(e.target.value)}
           style={{
-            padding: "6px 12px",
+            ...ctlBase,
             borderRadius: 12,
-            border: "1px solid #e5e7eb",
-            fontSize: 13,
-            outline: "none",
-            boxSizing: "border-box",
             // Make it a full-width row on mobile; grow inline on desktop
             flex: isMobile ? "0 0 100%" : "1 1 300px",
             minWidth: isMobile ? undefined : 150,
             width: isMobile ? "100%" : undefined,
-            height: 40,
           }}
         />
         {!isMobile && (
