@@ -100,7 +100,7 @@ export default function Home() {
             : { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }
         }
       >
-        <h1 style={{ margin: 0, fontSize: isMobile ? 20 : undefined }}>BJJ Classes v1.0</h1>
+        <h1 style={{ margin: 0, fontSize: isMobile ? 20 : undefined }}>BJJ Classes v1.1</h1>
         {isMobile ? (
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12, color: "#374151" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>

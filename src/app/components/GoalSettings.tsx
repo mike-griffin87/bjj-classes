@@ -37,12 +37,29 @@ export function expectedToDate(annualTarget: number, today = new Date()): number
   return annualTarget * pct;
 }
 
+// Project an end-of-year total from year-to-date progress
+export function projectedAnnualFromYTD(actual: number, today = new Date()): number {
+  const year = today.getFullYear();
+  const start = new Date(year, 0, 1);
+  const end = new Date(year + 1, 0, 1);
+  const elapsedMs = Math.max(0, today.getTime() - start.getTime());
+  const totalMs = end.getTime() - start.getTime();
+  // Use a floor to avoid divide-by-zero at year start; keep a tiny minimum fraction
+  const pctElapsed = Math.max(elapsedMs / totalMs, 1 / 365);
+  return actual / pctElapsed; // if actual = 0, projection = 0
+}
+
 export type BadgeResult = "Ahead of goal" | "On track" | "Behind goal";
 
 export function classifyProgress(actual: number, annualTarget: number, today = new Date()): BadgeResult {
-  const expected = expectedToDate(annualTarget, today);
-  if (actual >= expected * 1.1) return "Ahead of goal"; // >= 10% above expected
-  if (actual <= expected * 0.9) return "Behind goal"; // <= 10% below expected
+  // Forecast end-of-year based on current YTD pace
+  const projected = projectedAnnualFromYTD(actual, today);
+
+  // Tolerance band to avoid flip-flopping due to small changes
+  const TOL = 0.05; // 5%
+
+  if (projected >= annualTarget * (1 + TOL)) return "Ahead of goal";
+  if (projected <= annualTarget * (1 - TOL)) return "Behind goal";
   return "On track";
 }
 
