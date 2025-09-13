@@ -55,6 +55,21 @@ input, select, textarea, button {
   min-height: 44px; /* equal tap target + height consistency */
 }
 
+/* Restore native checkbox/radio (override global form control reset) */
+input[type="checkbox"],
+input[type="radio"] {
+  -webkit-appearance: auto;
+  appearance: auto;
+  width: 18px;
+  height: 18px;
+  min-height: 0;           /* undo global 44px min-height */
+  padding: 0;              /* native sizing */
+  border: initial;         /* let the UA draw it */
+  background: initial;     /* let the UA draw it */
+  vertical-align: middle;  /* align with label text */
+  accent-color: #111;      /* consistent brand color */
+}
+
 ::placeholder { color: var(--muted); opacity: 1; }
 
 input:-webkit-autofill {

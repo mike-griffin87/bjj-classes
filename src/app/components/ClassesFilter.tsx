@@ -374,7 +374,15 @@ export default function ClassesFilter({ classes, onRowClick, onAddClick, onTotal
                   type="checkbox"
                   checked={checked}
                   onChange={() => toggleMonth(i)}
-                  style={{ width: 16, height: 16 }}
+                  style={{
+                    WebkitAppearance: "checkbox" as any,
+                    appearance: "auto" as any,
+                    width: 18,
+                    height: 18,
+                    marginRight: 10,
+                    verticalAlign: "middle",
+                    accentColor: "#111",
+                  }}
                 />
                 <span style={{ fontWeight: 600 }}>{MONTH_LABELS[i]}</span>
               </label>
@@ -482,7 +490,7 @@ export default function ClassesFilter({ classes, onRowClick, onAddClick, onTotal
             position: 'fixed',
             left: 0,
             right: 0,
-            bottom: 0,
+            bottom: 8,
             padding: '24px 12px calc(10px + env(safe-area-inset-bottom))',
             background: 'rgba(255, 255, 255, 0.5)',
             backdropFilter: 'blur(1px)',
