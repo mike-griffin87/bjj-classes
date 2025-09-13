@@ -166,7 +166,11 @@ export default function Home() {
         <NewClassForm
           open={true}
           initialData={editRow}
-          onClose={() => setEditRow(null)}
+          onClose={() => {
+            setEditRow(null);
+            // reload to reflect edited class
+            load();
+          }}
         />
       )}
     </div>

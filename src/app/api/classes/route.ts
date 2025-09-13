@@ -1,96 +1,100 @@
+import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 
+// --- Supabase client (edge-safe) ---
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string;
 
-import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-
-
-const prisma = new PrismaClient();
-
-export async function GET() {
-  try {
-    const classes = await prisma.class.findMany({
-      orderBy: { date: "desc" },
-    });
-    return NextResponse.json(classes);
-  } catch (e) {
-    console.error(e);
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
-  }
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing Supabase environment variables');
 }
 
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+// --- Types for incoming payload (all optional except date & classType) ---
+export type ClassPayload = {
+  date: string | Date;
+  classType: string;
+  instructor?: string | null;
+  technique?: string | null;
+  description?: string | null;
+  hours?: number | null;
+  style?: string | null; // e.g. "gi" | "nogi"
+  url?: string | null;
+  performance?: string | null; // e.g. "EXCELLENT" | "NONE" | ...
+  performanceNotes?: string | null;
+  createdAt?: string | Date | null;
+};
+
+// GET /api/classes
+// Returns the list of classes ordered by date desc then id desc
+export async function GET() {
+  const { data, error } = await supabase
+    .from('classes')
+    .select('*')
+    .order('date', { ascending: false })
+    .order('id', { ascending: false });
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json(data ?? []);
+}
+
+// POST /api/classes
+// Creates a new class row. Only `date` and `classType` are required.
 export async function POST(req: Request) {
   try {
-    const body = await req.json().catch(() => null);
-    if (!body || typeof body !== "object") {
-      return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    const body = (await req.json()) as Partial<ClassPayload>;
+
+    const date = body.date ? new Date(body.date as any) : null;
+    const classType = body.classType?.trim();
+
+    if (!date || isNaN(date.getTime()) || !classType) {
+      return NextResponse.json(
+        { error: 'Both `date` (valid date) and `classType` are required.' },
+        { status: 400 }
+      );
     }
 
-    // --- Required: date
-    const dateStr = String((body as any).date || "").trim();
-    if (!dateStr) {
-      return NextResponse.json({ error: "Date is required" }, { status: 400 });
-    }
-    const date = new Date(dateStr);
-    if (isNaN(date.getTime())) {
-      return NextResponse.json({ error: "Invalid date" }, { status: 400 });
-    }
+    // Normalize performance to match DB enum (NONE | BAD | OK | GREAT)
+    const allowedPerformance = new Set(['NONE', 'BAD', 'OK', 'GREAT']);
+    const normalizedPerformance = body.performance
+      ? String(body.performance).toUpperCase()
+      : null;
+    const performanceValue =
+      normalizedPerformance && allowedPerformance.has(normalizedPerformance)
+        ? normalizedPerformance
+        : null;
 
-    // --- Optional: hours
-    const hoursRaw = (body as any).hours;
-    let hours: number | undefined = undefined;
-    if (hoursRaw !== undefined && hoursRaw !== null && String(hoursRaw).trim() !== "") {
-      const n = Number(hoursRaw);
-      if (!Number.isFinite(n)) {
-        return NextResponse.json({ error: "Hours must be a number" }, { status: 400 });
-      }
-      hours = n;
-    }
-
-    // --- Performance fields (tolerant input -> enum mapping)
-    const perfRaw = (body as any).performance;
-    const validPerfs = ["NONE", "POOR", "AVERAGE", "EXCELLENT"] as const;
-
-    const normalizePerf = (v: unknown): typeof validPerfs[number] => {
-      if (typeof v !== "string") return "NONE";
-      const s = v.trim().toLowerCase();
-      // explicit enum pass-through (already correct casing)
-      if (["none", "poor", "average", "excellent"].includes(s)) {
-        return s.toUpperCase() as typeof validPerfs[number];
-      }
-      // common aliases
-      if (["n/a", "na", "none", "not added", "notadded"].includes(s)) return "NONE";
-      if (["bad", "poor", "rough", "😕"].includes(s)) return "POOR";
-      if (["ok", "okay", "mediocre", "avg", "average", "🙂"].includes(s)) return "AVERAGE";
-      if (["great", "good", "strong", "awesome", "💪"].includes(s)) return "EXCELLENT";
-      return "NONE";
+    // Build record. Use null for missing optionals so they can be nullable in DB.
+    const record = {
+      date: date.toISOString(),
+      classType,
+      instructor: body.instructor ?? null,
+      technique: body.technique ?? null,
+      description: body.description ?? null,
+      hours: typeof body.hours === 'number' ? body.hours : body.hours ?? null,
+      style: body.style ?? null,
+      url: body.url ?? null,
+      performance: performanceValue,
+      performanceNotes: body.performanceNotes ?? null,
+      createdAt: body.createdAt ? new Date(body.createdAt as any).toISOString() : new Date().toISOString(),
     };
 
-    const perf = normalizePerf(perfRaw);
+    const { data, error } = await supabase
+      .from('classes')
+      .insert(record)
+      .select()
+      .single();
 
-    const performanceNotesRaw = (body as any).performanceNotes;
-    const performanceNotes =
-      typeof performanceNotesRaw === "string" && performanceNotesRaw.trim() !== ""
-        ? performanceNotesRaw
-        : undefined;
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
 
-    const created = await prisma.class.create({
-      data: {
-        date,
-        classType: String((body as any).classType ?? "Class"),
-        instructor: String((body as any).instructor ?? ""),
-        technique: String((body as any).technique ?? ""),
-        description: (body as any).description ? String((body as any).description) : "",
-        hours: hours ?? 0,
-        style: String((body as any).style ?? "unknown"),
-        url: (body as any).url ? String((body as any).url) : undefined,
-        performance: perf,
-        performanceNotes,
-      },
-    });
-
-    return NextResponse.json(created, { status: 201 });
-  } catch (e) {
-    console.error(e);
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+    return NextResponse.json(data, { status: 201 });
+  } catch (err: any) {
+    return NextResponse.json({ error: err?.message ?? 'Invalid JSON body' }, { status: 400 });
   }
 }

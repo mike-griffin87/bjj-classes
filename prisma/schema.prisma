@@ -3,28 +3,33 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  // Use pooled 6543 for Prisma Client at runtime
+  url       = env("DATABASE_URL")
+  // Use direct 5432 for migrate/db push
+  directUrl = env("DIRECT_URL")
 }
 
 model Class {
   id          Int      @id @default(autoincrement())
   date        DateTime
   classType   String
-  instructor  String
-  technique   String
-  description String
+  instructor  String?
+  technique   String?
+  description String?
   hours       Float?
-  style       String   // "gi" or "nogi"
+  style       String?  // "gi" or "nogi"
   url         String?
   createdAt   DateTime @default(now())
-  performance   Performance @default(NONE)
+  performance   Performance?
   performanceNotes String?
+
+  @@map("classes")
 }
 
 enum Performance {
-  NONE
-  POOR
-  AVERAGE
-  EXCELLENT
+  NONE  @map("NONE")
+  BAD   @map("BAD")
+  OK    @map("OK")
+  GREAT @map("GREAT")
 }

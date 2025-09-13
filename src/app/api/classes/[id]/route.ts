@@ -1,52 +1,76 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { supabase } from "../../../../../lib/supabaseClient";
 
-const prisma = new PrismaClient();
+// Helpers
+function strOrNull(v: unknown): string | null {
+  if (v === undefined || v === null) return null;
+  const s = String(v).trim();
+  return s === "" ? null : s;
+}
+
+function parseHours(v: unknown): number | null {
+  if (v === undefined) return null; // not provided -> we won't include it in update
+  if (v === null) return null;
+  const s = String(v).trim();
+  if (s === "") return null;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+
+function normalizeStyle(v: unknown): "gi" | "nogi" | null {
+  const s = strOrNull(v);
+  if (!s) return null;
+  const low = s.toLowerCase();
+  return low === "gi" || low === "nogi" ? (low as "gi" | "nogi") : null;
+}
+
+function normalizePerformance(v: unknown): "NONE" | "BAD" | "OK" | "GREAT" {
+  if (v === undefined || v === null) return "NONE";
+  const s = String(v).trim().toLowerCase();
+  if (["none", "n/a", "na", "not added", "notadded"].includes(s)) return "NONE";
+  if (["bad", "poor", "rough", "😕"].includes(s)) return "BAD";
+  if (["ok", "okay", "mediocre", "avg", "average", "🙂"].includes(s)) return "OK";
+  if (["great", "good", "strong", "awesome", "💪"].includes(s)) return "GREAT";
+  return "NONE";
+}
 
 // Build a partial update object from arbitrary input
 function buildUpdate(data: any) {
   const out: Record<string, any> = {};
 
+  // date (timestamp)
   if (data.date !== undefined) {
     const d = typeof data.date === "string" ? new Date(data.date) : data.date;
     const parsed = new Date(d);
-    if (!isNaN(parsed.getTime())) out.date = parsed;
-  }
-  if (data.classType !== undefined) out.classType = String(data.classType).trim();
-  if (data.instructor !== undefined) out.instructor = String(data.instructor).trim();
-  if (data.technique !== undefined) out.technique = String(data.technique).trim(); // comma-separated
-  if (data.description !== undefined) out.description = String(data.description).trim();
-  if (data.hours !== undefined) {
-    const n = Number(data.hours);
-    out.hours = Number.isFinite(n) ? n : null;
-  }
-  if (data.style !== undefined) out.style = String(data.style).trim(); // "gi" | "nogi"
-  if (data.url !== undefined) {
-    const url = String(data.url).trim();
-    out.url = url.length ? url : null;
+    if (!isNaN(parsed.getTime())) {
+      // Supabase/Postgres accepts ISO 8601 strings for timestamp columns
+      out.date = parsed.toISOString();
+    }
   }
 
-  // Performance normalization (maps many inputs to enum values)
-  if (data.performance !== undefined) {
-    const normalizePerf = (v: unknown) => {
-      if (typeof v !== "string") return "NONE" as const;
-      const s = v.trim().toLowerCase();
-      if (["none", "poor", "average", "excellent"].includes(s)) {
-        return s.toUpperCase() as "NONE" | "POOR" | "AVERAGE" | "EXCELLENT";
-      }
-      if (["n/a", "na", "not added", "notadded"].includes(s)) return "NONE" as const;
-      if (["bad", "poor", "rough", "😕"].includes(s)) return "POOR" as const;
-      if (["ok", "okay", "mediocre", "avg", "average", "🙂"].includes(s)) return "AVERAGE" as const;
-      if (["great", "good", "strong", "awesome", "💪"].includes(s)) return "EXCELLENT" as const;
-      return "NONE" as const;
-    };
-    out.performance = normalizePerf(data.performance);
-  }
+  // strings
+  if (data.classType !== undefined) out.classType = strOrNull(data.classType);
+  if (data.instructor !== undefined) out.instructor = strOrNull(data.instructor);
+  if (data.technique !== undefined) out.technique = strOrNull(data.technique);
+  if (data.description !== undefined) out.description = strOrNull(data.description);
 
-  if (data.performanceNotes !== undefined) {
-    const txt = String(data.performanceNotes ?? "").trim();
-    out.performanceNotes = txt.length ? txt : null;
-  }
+  // hours (float8)
+  if (data.hours !== undefined) out.hours = parseHours(data.hours);
+
+  // style ("gi" | "nogi" | null)
+  if (data.style !== undefined) out.style = normalizeStyle(data.style);
+
+  // url (nullable text)
+  if (data.url !== undefined) out.url = strOrNull(data.url);
+
+  // performance → "NONE" | "BAD" | "OK" | "GREAT"
+  if (data.performance !== undefined) out.performance = normalizePerformance(data.performance);
+
+  // performanceNotes (nullable text)
+  if (data.performanceNotes !== undefined) out.performanceNotes = strOrNull(data.performanceNotes);
+
+  // remove keys that ended up undefined to avoid writing them
+  Object.keys(out).forEach((k) => out[k] === undefined && delete out[k]);
 
   return out;
 }
@@ -59,13 +83,28 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     }
 
     const body = await req.json().catch(() => ({}));
-    const data = buildUpdate(body);
-    if (Object.keys(data).length === 0) {
+    const update = buildUpdate(body);
+    if (Object.keys(update).length === 0) {
       return NextResponse.json({ error: "No valid fields provided" }, { status: 400 });
     }
 
-    const updated = await prisma.class.update({ where: { id }, data });
-    return NextResponse.json(updated, { status: 200 });
+    const { data, error } = await supabase
+      .from("classes")
+      .update(update)
+      .eq("id", id)
+      .select("*")
+      .single();
+
+    if (error) {
+      console.error("PUT /api/classes/[id] supabase error", error);
+      return NextResponse.json({ error: "Failed to update" }, { status: 500 });
+    }
+
+    if (!data) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    return NextResponse.json(data, { status: 200 });
   } catch (err: any) {
     console.error("PUT /api/classes/[id] error", err);
     return NextResponse.json({ error: "Failed to update" }, { status: 500 });
@@ -79,14 +118,30 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
       return NextResponse.json({ error: "Invalid id" }, { status: 400 });
     }
 
-    const deleted = await prisma.class.delete({ where: { id } });
-    return NextResponse.json(deleted, { status: 200 });
+    const { data, error } = await supabase
+      .from("classes")
+      .delete()
+      .eq("id", id)
+      .select("*")
+      .single();
+
+    if (error) {
+      console.error("DELETE /api/classes/[id] supabase error", error);
+      return NextResponse.json({ error: "Failed to delete" }, { status: 500 });
+    }
+
+    if (!data) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    return NextResponse.json(data, { status: 200 });
   } catch (err: any) {
     console.error("DELETE /api/classes/[id] error", err);
     return NextResponse.json({ error: "Failed to delete" }, { status: 500 });
   }
 }
 
+// PATCH behaves like PUT (partial update)
 export async function PATCH(req: Request, ctx: { params: { id: string } }) {
   return PUT(req, ctx);
 }
