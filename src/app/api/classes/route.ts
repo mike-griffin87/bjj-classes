@@ -13,12 +13,12 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // --- Types for incoming payload (all optional except date & classType) ---
 export type ClassPayload = {
-  date: string | Date;
+  date: string | number | Date;
   classType: string;
   instructor?: string | null;
   technique?: string | null;
   description?: string | null;
-  hours?: number | null;
+  hours?: number | string | null;
   style?: string | null; // e.g. "gi" | "nogi"
   url?: string | null;
   performance?: string | null; // e.g. "EXCELLENT" | "NONE" | ...
@@ -48,12 +48,12 @@ export async function POST(req: Request) {
   try {
     const body = (await req.json()) as Partial<ClassPayload>;
 
-    const date = body.date ? new Date(body.date as any) : null;
     const classType = body.classType?.trim();
+    const dateMs = body.date != null ? new Date(body.date as any).getTime() : NaN; // accept ISO, number, or Date
 
-    if (!date || isNaN(date.getTime()) || !classType) {
+    if (!classType || Number.isNaN(dateMs)) {
       return NextResponse.json(
-        { error: 'Both `date` (valid date) and `classType` are required.' },
+        { error: 'Both `date` (valid) and `classType` are required.' },
         { status: 400 }
       );
     }
@@ -68,20 +68,26 @@ export async function POST(req: Request) {
         ? normalizedPerformance
         : null;
 
-    // Build record. Use null for missing optionals so they can be nullable in DB.
+    let hoursVal: number | null = null;
+    const rawHours = (body as any).hours;
+    if (rawHours !== undefined && rawHours !== null && rawHours !== '') {
+      const n = Number(rawHours);
+      hoursVal = Number.isNaN(n) ? null : n;
+    }
+
     const record = {
-      date: date.toISOString(),
+      date: dateMs, // bigint in DB (epoch ms)
       classType,
       instructor: body.instructor ?? null,
       technique: body.technique ?? null,
       description: body.description ?? null,
-      hours: typeof body.hours === 'number' ? body.hours : body.hours ?? null,
+      hours: hoursVal !== null && !Number.isNaN(hoursVal) ? hoursVal : null,
       style: body.style ?? null,
       url: body.url ?? null,
       performance: performanceValue,
       performanceNotes: body.performanceNotes ?? null,
-      createdAt: body.createdAt ? new Date(body.createdAt as any).toISOString() : new Date().toISOString(),
-    };
+      createdAt: body.createdAt ? new Date(body.createdAt as any).getTime() : Date.now(),
+    } as const;
 
     const { data, error } = await supabase
       .from('classes')
