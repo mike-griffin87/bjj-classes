@@ -38,13 +38,11 @@ function normalizePerformance(v: unknown): "NONE" | "BAD" | "OK" | "GREAT" {
 function buildUpdate(data: any) {
   const out: Record<string, any> = {};
 
-  // date (timestamp)
+  // date (bigint epoch ms)
   if (data.date !== undefined) {
-    const d = typeof data.date === "string" ? new Date(data.date) : data.date;
-    const parsed = new Date(d);
-    if (!isNaN(parsed.getTime())) {
-      // Supabase/Postgres accepts ISO 8601 strings for timestamp columns
-      out.date = parsed.toISOString();
+    const dateMs = new Date(data.date as any).getTime();
+    if (Number.isFinite(dateMs)) {
+      out.date = dateMs; // align with DB bigint
     }
   }
 

@@ -71,6 +71,7 @@ export default function NewClassForm({
     "Shane Smith",
     "Stu Mulpeter",
     "Kieran OD",
+    "Dean",
     "None",
   ] as const;
   const [instructorValue, setInstructorValue] = React.useState<string>(
