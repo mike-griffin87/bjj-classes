@@ -6,19 +6,32 @@ import NewClassForm from "./NewClassForm";
 
 // Minimal shape we rely on in the drawer; keeps this component flexible
 type ClassRow = {
-  id?: number | string;
+  id: number | string;
   date?: string | Date;
-  classType?: string;
-  instructor?: string;
-  technique?: string;
+  classType: string;
+  instructor: string;
+  technique: string;
   description?: string;
-  hours?: number | null;
-  style?: string;
-  url?: string | null;
+  hours?: number;
+  style: string;
+  url?: string;
 };
 
 export default function ClassesView({ classes }: { classes: ClassRow[] }) {
   const [editing, setEditing] = React.useState<ClassRow | null>(null);
+
+  // Tooltip for goal badge (tap to see how many needed to reach target)
+  const [goalTip, setGoalTip] = React.useState<{ message: string } | null>(null);
+  const handleBadgeTap = React.useCallback(
+    (payload: { needed: number; unit: "classes" | "hours"; target: number; projected: number; ytd: number }) => {
+      const msg = `Need ${payload.needed} more ${payload.unit} to reach ${payload.target} this year (YTD ${payload.ytd}, proj ${Math.round(payload.projected)}).`;
+      setGoalTip({ message: msg });
+      // Auto-hide after 3 seconds
+      window.clearTimeout((window as any).__goalTipTimer);
+      (window as any).__goalTipTimer = window.setTimeout(() => setGoalTip(null), 3000);
+    },
+    []
+  );
 
   // Handler passed to the table (forwarded through ClassesFilter)
   const handleRowClick = React.useCallback((row: ClassRow) => {
@@ -36,8 +49,11 @@ export default function ClassesView({ classes }: { classes: ClassRow[] }) {
     >
       {/* Filter + Table. NOTE: ClassesFilter must forward onRowClick to ClassTable. */}
       {/* After this file is added, we will update ClassesFilter.tsx to accept an optional onRowClick prop and pass it to ClassTable. */}
-      {/* @ts-expect-error onRowClick will be added to ClassesFilter next */}
-      <ClassesFilter classes={classes} onRowClick={handleRowClick} />
+      <ClassesFilter
+        classes={classes}
+        onRowClick={handleRowClick}
+        onBadgeTap={handleBadgeTap}
+      />
 
       {/* Edit drawer (read-only placeholder for now) */}
       {editing && (
@@ -45,6 +61,37 @@ export default function ClassesView({ classes }: { classes: ClassRow[] }) {
           data={editing}
           onClose={() => setEditing(null)}
         />
+      )}
+
+      {goalTip && (
+        <div
+          onClick={() => setGoalTip(null)}
+          style={{
+            position: "fixed",
+            left: 0,
+            right: 0,
+            bottom: "calc(env(safe-area-inset-bottom) + 120px)",
+            display: "flex",
+            justifyContent: "center",
+            zIndex: 2147483646,
+            pointerEvents: "auto",
+          }}
+        >
+          <div
+            role="tooltip"
+            style={{
+              maxWidth: 320,
+              padding: "10px 12px",
+              borderRadius: 10,
+              background: "rgba(17,17,17,0.92)",
+              color: "#fff",
+              fontSize: 12,
+              boxShadow: "0 6px 18px rgba(0,0,0,0.25)",
+            }}
+          >
+            {goalTip.message}
+          </div>
+        </div>
       )}
     </div>
   );

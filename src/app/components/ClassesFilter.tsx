@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState, useRef } from "react";
 import { createPortal } from "react-dom";
-import ClassTable from "./ClassTable";
+import ClassTable, { ClassType } from "./ClassTable";
 import { goalToAnnualTarget, classifyProgress } from "./GoalSettings";
 import { IconChevronDown, IconPlus } from "@tabler/icons-react";
 
@@ -10,7 +10,7 @@ import { IconChevronDown, IconPlus } from "@tabler/icons-react";
 // (it mirrors the structure used by ClassTable)
 export type ClassRow = {
   id: string | number;
-  date: string | Date;
+  date?: string | Date;
   classType: string;
   instructor: string;
   technique: string;
@@ -51,21 +51,27 @@ const ctlBase: React.CSSProperties = {
   appearance: "none" as any,
 };
 
-function getYear(d: string | Date) {
+function getYear(d?: string | Date) {
+  if (!d) return NaN; // caller should ignore NaN
   const dt = new Date(d);
   return dt.getFullYear();
 }
 
-function getMonthIndex(d: string | Date) {
+function getMonthIndex(d?: string | Date) {
+  if (!d) return -1;
   const dt = new Date(d);
-  return dt.getMonth(); // 0-11
+  return Number.isNaN(dt.getTime()) ? -1 : dt.getMonth(); // 0-11 or -1 when invalid
 }
 
-export default function ClassesFilter({ classes, onRowClick, onAddClick, onTotalsChange }: { classes: ClassRow[]; onRowClick?: (c: ClassRow) => void; onAddClick?: () => void; onTotalsChange?: (t: { total: number; hours: number; goal: string | null; yearsCount?: number }) => void }) {
+function hasDate(row: ClassRow): row is ClassType {
+  return row.date !== undefined;
+}
+
+export default function ClassesFilter({ classes, onRowClick, onAddClick, onTotalsChange, onBadgeTap }: { classes: ClassRow[]; onRowClick?: (c: ClassRow) => void; onAddClick?: () => void; onTotalsChange?: (t: { total: number; hours: number; goal: string | null; yearsCount?: number; goalDetail?: { unit: "classes" | "hours"; target: number; ytd: number; projected: number; needed: number } }) => void; onBadgeTap?: (p: { needed: number; unit: "classes" | "hours"; target: number; projected: number; ytd: number }) => void }) {
   // Derive available years from the data
   const years = useMemo(() => {
     const set = new Set<number>();
-    classes.forEach((c) => set.add(getYear(c.date)));
+    classes.forEach((c) => { const y = getYear(c.date); if (!Number.isNaN(y)) set.add(y); });
     return Array.from(set).sort((a, b) => a - b); // asc (earliest first)
   }, [classes]);
 
@@ -163,8 +169,10 @@ export default function ClassesFilter({ classes, onRowClick, onAddClick, onTotal
     if (year === "all") return [] as number[];
     const set = new Set<number>();
     classes.forEach((c) => {
-      if (getYear(c.date) === year) {
-        set.add(getMonthIndex(c.date));
+      const y = getYear(c.date);
+      if (y === year) {
+        const m = getMonthIndex(c.date);
+        if (m >= 0) set.add(m);
       }
     });
     return Array.from(set).sort((a, b) => a - b);
@@ -191,7 +199,7 @@ export default function ClassesFilter({ classes, onRowClick, onAddClick, onTotal
   const yearsCount = useMemo(() => {
     if (year !== "all") return undefined;
     const set = new Set<number>();
-    filtered.forEach((c) => set.add(getYear(c.date)));
+    filtered.forEach((c) => { const y = getYear(c.date); if (!Number.isNaN(y)) set.add(y); });
     return set.size;
   }, [filtered, year]);
 
@@ -199,33 +207,47 @@ export default function ClassesFilter({ classes, onRowClick, onAddClick, onTotal
 
   // --- Goal / Progress (current year only, independent of filters)
   const [goalBadge, setGoalBadge] = useState<string | null>(null);
+  const [goalDetail, setGoalDetail] = useState<{ unit: "classes" | "hours"; target: number; ytd: number; projected: number; needed: number } | null>(null);
 
   React.useEffect(() => {
     try {
       const raw = localStorage.getItem("bjj-classes:goal:v1");
-      if (!raw) { setGoalBadge(null); return; }
+      if (!raw) { setGoalDetail(null); setGoalBadge(null); return; }
       const g = JSON.parse(raw) as { metric: "classes"|"hours"; target: number; cadence: "weekly"|"monthly"|"annually"; year: number };
-      if (!g || !g.metric || !g.cadence || !Number.isFinite(g.target)) { setGoalBadge(null); return; }
+      if (!g || !g.metric || !g.cadence || !Number.isFinite(g.target)) { setGoalDetail(null); setGoalBadge(null); return; }
 
       const thisYear = new Date().getFullYear();
       // Only evaluate against the current year
-      const thisYearRows = classes.filter(c => new Date(c.date).getFullYear() === thisYear);
+      const thisYearRows = classes.filter(c => {
+        const d = c.date ? new Date(c.date) : null;
+        return !!(d && !Number.isNaN(d.getTime()) && d.getFullYear() === thisYear);
+      });
       const actualClasses = thisYearRows.length;
       const actualHours = thisYearRows.reduce((sum, c) => sum + (c.hours ?? 0), 0);
 
       const annual = goalToAnnualTarget({ metric: g.metric, target: g.target, cadence: g.cadence, year: thisYear });
+      // Build goal detail for tooltip
       const actual = g.metric === "classes" ? actualClasses : actualHours;
+      const start = new Date(thisYear, 0, 1).getTime();
+      const end = new Date(thisYear + 1, 0, 1).getTime();
+      const elapsed = Math.max(0, Date.now() - start);
+      const total = end - start;
+      const frac = Math.max(elapsed / total, 1 / 365);
+      const projected = actual / frac;
+      const needed = Math.max(0, annual - actual);
+      setGoalDetail({ unit: g.metric, target: annual, ytd: actual, projected, needed });
       const label = classifyProgress(actual, annual);
       setGoalBadge(label);
     } catch (e) {
+      setGoalDetail(null);
       setGoalBadge(null);
     }
   }, [classes]);
 
   // onTotalsChange is intentionally excluded from dependencies to avoid re-runs caused by changing function identity
   React.useEffect(() => {
-    onTotalsChange?.({ total: filtered.length, hours: totalHours, goal: goalBadge ?? null, yearsCount });
-  }, [filtered.length, totalHours, goalBadge, yearsCount]);
+    onTotalsChange?.({ total: filtered.length, hours: totalHours, goal: goalBadge ?? null, yearsCount, goalDetail: goalDetail ?? undefined });
+  }, [filtered.length, totalHours, goalBadge, yearsCount, goalDetail]);
 
   return (
     <div style={{ display: "grid", gap: isMobile ? 8 : 10 }}>
@@ -480,7 +502,7 @@ export default function ClassesFilter({ classes, onRowClick, onAddClick, onTotal
 
       {/* Result table */}
       <ClassTable
-        classes={filtered}
+        classes={filtered.filter(hasDate)}
         onRowClick={(c) => onRowClick?.(c)}
       />
       {isMobile && <div style={{ height: 76 }} />}

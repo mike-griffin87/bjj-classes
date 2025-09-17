@@ -176,6 +176,54 @@ export default function GoalSettings({
     setPanelOpen(false);
   };
 
+  const handleUpdateApp = React.useCallback(async () => {
+    try {
+      if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
+        window.location.reload();
+        return;
+      }
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (!reg) {
+        window.location.reload();
+        return;
+      }
+
+      let reloaded = false;
+      const onControllerChange = () => {
+        if (reloaded) return;
+        reloaded = true;
+        window.location.reload();
+      };
+      navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
+
+      const sendSkipWaiting = (sw: ServiceWorker | null) => {
+        try { sw && sw.postMessage('SKIP_WAITING'); } catch {}
+      };
+
+      // Check for an update
+      try { await reg.update(); } catch {}
+
+      if (reg.waiting) {
+        sendSkipWaiting(reg.waiting);
+        return;
+      }
+      if (reg.installing) {
+        const sw = reg.installing;
+        sw?.addEventListener('statechange', () => {
+          if ((sw as ServiceWorker).state === 'installed') {
+            sendSkipWaiting(sw as ServiceWorker);
+          }
+        });
+        return;
+      }
+
+      // Fallback: no SW yet — do a normal reload
+      setTimeout(() => { if (!reloaded) window.location.reload(); }, 300);
+    } finally {
+      setMenuOpen(false);
+    }
+  }, []);
+
   // --- UI Tokens (inline to avoid new files)
   const btn = {
     base: {
@@ -233,6 +281,22 @@ export default function GoalSettings({
             zIndex: 25,
           }}
         >
+          <button
+            role="menuitem"
+            onClick={handleUpdateApp}
+            style={{
+              width: "100%",
+              textAlign: "left",
+              padding: "8px 10px",
+              borderRadius: 6,
+              border: "1px solid transparent",
+              background: "transparent",
+              cursor: "pointer",
+              fontWeight: 600,
+            }}
+          >
+            Update app
+          </button>
           <button
             role="menuitem"
             onClick={() => { setPanelOpen(true); setMenuOpen(false); }}

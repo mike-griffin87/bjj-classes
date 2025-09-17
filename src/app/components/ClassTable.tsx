@@ -1,6 +1,6 @@
 import React from "react";
 
-type ClassType = {
+export type ClassType = {
   id: string | number;
   date: string | Date;
   classType: string;
