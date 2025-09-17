@@ -38,6 +38,32 @@ export default function NewClassForm({
     return () => document.removeEventListener("keydown", onKey);
   }, [open]);
 
+  // Lock background scroll on iOS/Android while drawer is open
+  const scrollYRef = React.useRef(0);
+  React.useEffect(() => {
+    if (!open) return;
+    // Save current scroll position
+    scrollYRef.current = window.scrollY || window.pageYOffset || 0;
+    const { style } = document.body as HTMLBodyElement;
+    const prev = {
+      position: style.position,
+      top: style.top as string,
+      width: style.width,
+      overflow: style.overflow,
+    };
+    style.position = "fixed";
+    style.top = `-${scrollYRef.current}px`;
+    style.width = "100%";
+    style.overflow = "hidden";
+    return () => {
+      style.position = prev.position;
+      style.top = prev.top;
+      style.width = prev.width;
+      style.overflow = prev.overflow;
+      window.scrollTo(0, scrollYRef.current);
+    };
+  }, [open]);
+
   // Default date to today (local)
   const today = React.useMemo(() => {
     const now = new Date();
@@ -352,7 +378,7 @@ export default function NewClassForm({
             position: "fixed",
             top: 0,
             right: 0,
-            height: "100vh",
+            height: "100dvh",
             width: 480,
             maxWidth: "min(92vw, 520px)",
             background: "#fff",
@@ -363,6 +389,7 @@ export default function NewClassForm({
             flexDirection: "column",
             borderTopLeftRadius: 12,
             borderBottomLeftRadius: 12,
+            overscrollBehavior: "none",
           }}
         >
           {/* Header */}
@@ -401,7 +428,17 @@ export default function NewClassForm({
           </div>
 
           {/* Body */}
-          <div style={{ padding: "16px 18px", overflow: "auto", flex: 1 }}>
+          <div
+            style={{
+              padding: "16px 18px",
+              overflow: "auto",
+              WebkitOverflowScrolling: "touch",
+              overscrollBehavior: "contain",
+              flex: 1,
+              // extra bottom space so last inputs aren't covered by the sticky footer/keyboard
+              paddingBottom: "calc(env(safe-area-inset-bottom) + 120px)",
+            }}
+          >
             <form
               ref={formRef}
               onSubmit={onSubmit}
@@ -799,6 +836,7 @@ export default function NewClassForm({
               background: "#fff",
               borderTop: "1px solid #f2f2f2",
               padding: "12px 18px",
+              paddingBottom: "calc(env(safe-area-inset-bottom) + 8px)",
               display: "flex",
               justifyContent: "flex-end",
               gap: 8,
