@@ -34,6 +34,7 @@ export default function Home() {
     totalHours: number;
     badgeText: string;
     yearsCount?: number;
+    goalDetail?: { unit: "classes" | "hours"; target: number; ytd: number; projected: number; needed: number };
   } | null>(null);
 
   async function load() {
@@ -78,18 +79,37 @@ export default function Home() {
   const badgeStyle = getBadgeStyle(badgeText);
   const badgeIcon = getBadgeIcon(badgeText);
 
-  const handleTotalsChange = useCallback((totals: { total: number; hours: number; goal: string | null; yearsCount?: number }) => {
+  const handleTotalsChange = useCallback((totals: { total: number; hours: number; goal: string | null; yearsCount?: number; goalDetail?: { unit: "classes" | "hours"; target: number; ytd: number; projected: number; needed: number } }) => {
     setFilteredTotals({
       totalClasses: totals.total,
       totalHours: totals.hours,
       badgeText: totals.goal ?? "On track",
       yearsCount: totals.yearsCount,
+      goalDetail: totals.goalDetail,
     });
   }, []);
 
   // Compute yearsCount and showBadge before return
   const yearsCount = filteredTotals?.yearsCount;
   const showBadge = !(yearsCount && yearsCount > 1); // hide badge in All-years view
+
+  // Tooltip for goal badge
+  const [goalTip, setGoalTip] = useState<string | null>(null);
+  const openGoalTip = useCallback(() => {
+    const d = filteredTotals?.goalDetail;
+    if (!d) {
+      setGoalTip("Set a goal to see details");
+      return;
+    }
+    const needed = Math.max(0, Math.ceil(d.needed));
+    const msg = `Need ${needed} more ${d.unit} to reach ${d.target} this year (YTD ${d.ytd}, proj ${Math.round(d.projected)}).`;
+    setGoalTip(msg);
+    // auto-hide after 3s
+    // @ts-ignore
+    window.clearTimeout((window as any).__goalTipTimer);
+    // @ts-ignore
+    (window as any).__goalTipTimer = window.setTimeout(() => setGoalTip(null), 3000);
+  }, [filteredTotals]);
 
   return (
     <div style={{ padding: isMobile ? "1rem" : "2rem", fontFamily: "Arial, sans-serif" }}>
@@ -109,7 +129,7 @@ export default function Home() {
                 <span>• {yearsCount} years</span>
               )}
               {showBadge && (
-                <div style={{ borderRadius: 9999, padding: "2px 8px", fontSize: 11, ...badgeStyle }}>
+                <div onClick={openGoalTip} role="button" aria-label="Show goal details" style={{ borderRadius: 9999, padding: "2px 8px", fontSize: 11, cursor: "pointer", ...badgeStyle }}>
                   <span style={{ display: "flex", alignItems: "center", gap: 2 }}>
                     {badgeIcon}
                     {badgeText}
@@ -127,7 +147,7 @@ export default function Home() {
                 <span>• {yearsCount} years</span>
               )}
               {showBadge && (
-                <div style={{ borderRadius: 9999, padding: "2px 8px", fontSize: 12, ...badgeStyle }}>
+                <div onClick={openGoalTip} role="button" aria-label="Show goal details" style={{ borderRadius: 9999, padding: "2px 8px", fontSize: 12, cursor: "pointer", ...badgeStyle }}>
                   <span style={{ display: "flex", alignItems: "center", gap: 2 }}>
                     {badgeIcon}
                     {badgeText}
@@ -173,6 +193,27 @@ export default function Home() {
           }}
         />
       )}
+      {goalTip && (
+        <div
+          role="tooltip"
+          onClick={() => setGoalTip(null)}
+          style={{
+            position: "fixed",
+            left: "50%",
+            bottom: "calc(env(safe-area-inset-bottom) + 120px)",
+            transform: "translateX(-50%)",
+            background: "rgba(17,17,17,0.92)",
+            color: "#fff",
+            padding: "10px 12px",
+            borderRadius: 10,
+            fontSize: 12,
+            zIndex: 2147483647,
+            boxShadow: "0 6px 18px rgba(0,0,0,0.25)",
+          }}
+        >
+          {goalTip}
+        </div>
+      )}
       {/* Version badge (fixed near bottom; above Add button) */}
       <div
         aria-label="app-version"
@@ -188,7 +229,7 @@ export default function Home() {
           zIndex: 2147483646,
         }}
       >
-        v0.6
+        v0.7
       </div>
     </div>
   );
