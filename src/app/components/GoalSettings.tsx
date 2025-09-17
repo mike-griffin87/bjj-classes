@@ -94,6 +94,31 @@ function saveStoredGoal(goal: GoalSettingsValue) {
   }
 }
 
+// ------- Server sync (Supabase via /api/goals)
+async function fetchServerGoal(year: number, metric: GoalMetric): Promise<number | null> {
+  try {
+    const res = await fetch(`/api/goals?year=${year}&metric=${metric}`, { cache: 'no-store' });
+    const json = await res.json();
+    if (!res.ok) return null;
+    const t = Number(json?.target);
+    return Number.isFinite(t) ? t : null;
+  } catch {
+    return null;
+  }
+}
+
+async function upsertServerGoal(year: number, metric: GoalMetric, target: number): Promise<void> {
+  try {
+    await fetch('/api/goals', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ year, metric, target }),
+    });
+  } catch {
+    // noop
+  }
+}
+
 // ------- Component
 export default function GoalSettings({
   onSave,
@@ -132,9 +157,21 @@ export default function GoalSettings({
     }
   }, []);
 
-  const handleSave = () => {
+  // Fetch goal from server for current metric/year so all devices match
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const t = await fetchServerGoal(currentYear, metric);
+      if (!cancelled && t !== null) setTarget(t);
+    })();
+    return () => { cancelled = true; };
+  }, [metric, currentYear]);
+
+  const handleSave = async () => {
     const goal: GoalSettingsValue = { metric, target, cadence, year };
+    // Persist locally for offline, and to server for cross-device consistency
     saveStoredGoal(goal);
+    await upsertServerGoal(year, metric, target);
     onSave?.(goal);
     setPanelOpen(false);
   };
