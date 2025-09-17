@@ -188,7 +188,7 @@ export default function Home() {
           zIndex: 2147483646,
         }}
       >
-        v1.3
+        v1.4
       </div>
     </div>
   );
