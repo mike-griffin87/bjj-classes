@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { IconSettings } from "@tabler/icons-react";
+import { IconSettings, IconRefresh, IconNote, IconTarget } from "@tabler/icons-react";
 
 // ------- Types
 export type GoalMetric = "classes" | "hours";
@@ -130,6 +130,23 @@ export default function GoalSettings({
   const [menuOpen, setMenuOpen] = React.useState(false); // dropdown under cog
   const [panelOpen, setPanelOpen] = React.useState(false); // training goal panel
 
+  // Hover state for menu items (to support inline hover styles)
+  const [hoverItem, setHoverItem] = React.useState<string | null>(null);
+  const itemStyle = (id: string) => ({
+    width: "100%",
+    textAlign: "left" as const,
+    padding: "10px 12px",
+    borderRadius: 10,
+    border: "1px solid transparent",
+    background: hoverItem === id ? "#f5f7fa" : "transparent",
+    cursor: "pointer" as const,
+    fontWeight: 500 as const,
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    color: "#111",
+  });
+
   const [metric, setMetric] = React.useState<GoalMetric>("classes");
   const [target, setTarget] = React.useState<number>(3);
   const [cadence, setCadence] = React.useState<GoalCadence>("weekly");
@@ -224,6 +241,16 @@ export default function GoalSettings({
     }
   }, []);
 
+  const handleAddNote = React.useCallback(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('bjj:add-note'));
+      }
+    } finally {
+      setMenuOpen(false);
+    }
+  }, []);
+
   // --- UI Tokens (inline to avoid new files)
   const btn = {
     base: {
@@ -255,9 +282,12 @@ export default function GoalSettings({
         onClick={() => setMenuOpen((v) => !v)}
         style={{
           ...btn.base,
-          padding: "6px 8px",
+          width: 40,
+          height: 40,
+          padding: 0,
           display: "inline-flex",
           alignItems: "center",
+          justifyContent: "center",
           gap: 6,
         }}
       >
@@ -272,46 +302,44 @@ export default function GoalSettings({
             position: "absolute",
             right: 0,
             top: "calc(100% + 8px)",
-            minWidth: 180,
+            minWidth: 220,
             background: "#fff",
             border: "1px solid #e5e7eb",
-            borderRadius: 8,
-            boxShadow: "0 8px 20px rgba(0,0,0,0.08)",
-            padding: 6,
+            borderRadius: 12,
+            boxShadow: "0 12px 32px rgba(17,24,39,0.12)",
+            padding: 8,
             zIndex: 25,
           }}
         >
           <button
             role="menuitem"
             onClick={handleUpdateApp}
-            style={{
-              width: "100%",
-              textAlign: "left",
-              padding: "8px 10px",
-              borderRadius: 6,
-              border: "1px solid transparent",
-              background: "transparent",
-              cursor: "pointer",
-              fontWeight: 600,
-            }}
+            onMouseEnter={() => setHoverItem("update")}
+            onMouseLeave={() => setHoverItem(null)}
+            style={itemStyle("update")}
           >
-            Update app
+            <IconRefresh size={18} stroke={1.8} color="#6b7280" />
+            <span>Update app</span>
+          </button>
+          <button
+            role="menuitem"
+            onClick={handleAddNote}
+            onMouseEnter={() => setHoverItem("note")}
+            onMouseLeave={() => setHoverItem(null)}
+            style={itemStyle("note")}
+          >
+            <IconNote size={18} stroke={1.8} color="#6b7280" />
+            <span>Add note</span>
           </button>
           <button
             role="menuitem"
             onClick={() => { setPanelOpen(true); setMenuOpen(false); }}
-            style={{
-              width: "100%",
-              textAlign: "left",
-              padding: "8px 10px",
-              borderRadius: 6,
-              border: "1px solid transparent",
-              background: "transparent",
-              cursor: "pointer",
-              fontWeight: 600,
-            }}
+            onMouseEnter={() => setHoverItem("goal")}
+            onMouseLeave={() => setHoverItem(null)}
+            style={itemStyle("goal")}
           >
-            Training goal
+            <IconTarget size={18} stroke={1.8} color="#6b7280" />
+            <span>Training goal</span>
           </button>
         </div>
       )}

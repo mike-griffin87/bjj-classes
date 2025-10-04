@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import ClassesFilter from "@/app/components/ClassesFilter";
 import NewClassForm from "@/app/components/NewClassForm";
 import GoalSettings from "@/app/components/GoalSettings";
@@ -93,23 +93,29 @@ export default function Home() {
   const yearsCount = filteredTotals?.yearsCount;
   const showBadge = !(yearsCount && yearsCount > 1); // hide badge in All-years view
 
-  // Tooltip for goal badge
+  // Tooltip for goal badge — 30s auto-hide or tap to dismiss
   const [goalTip, setGoalTip] = useState<string | null>(null);
+  const goalTipTimerRef = useRef<number | null>(null);
+
   const openGoalTip = useCallback(() => {
     const d = filteredTotals?.goalDetail;
-    if (!d) {
-      setGoalTip("Set a goal to see details");
-      return;
-    }
-    const needed = Math.max(0, Math.ceil(d.needed));
-    const msg = `Need ${needed} more ${d.unit} to reach ${d.target} this year (YTD ${d.ytd}, proj ${Math.round(d.projected)}).`;
+    const msg = d
+      ? `Need ${Math.max(0, Math.ceil(d.needed))} more ${d.unit} to reach ${d.target}.\nYTD: ${d.ytd}  ·  Projected: ${Math.round(d.projected)}`
+      : "Set a goal to see details";
+
     setGoalTip(msg);
-    // auto-hide after 3s
-    // @ts-ignore
-    window.clearTimeout((window as any).__goalTipTimer);
-    // @ts-ignore
-    (window as any).__goalTipTimer = window.setTimeout(() => setGoalTip(null), 3000);
+
+    // Clear any previous timer, then start a new 30s timer
+    if (goalTipTimerRef.current) window.clearTimeout(goalTipTimerRef.current);
+    goalTipTimerRef.current = window.setTimeout(() => setGoalTip(null), 30000);
   }, [filteredTotals]);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (goalTipTimerRef.current) window.clearTimeout(goalTipTimerRef.current);
+    };
+  }, []);
 
   return (
     <div style={{ padding: isMobile ? "1rem" : "2rem", fontFamily: "Arial, sans-serif" }}>
@@ -196,7 +202,7 @@ export default function Home() {
       {goalTip && (
         <div
           role="tooltip"
-          onClick={() => setGoalTip(null)}
+          onClick={() => { if (goalTipTimerRef.current) window.clearTimeout(goalTipTimerRef.current); setGoalTip(null); }}
           style={{
             position: "fixed",
             left: "50%",
@@ -209,6 +215,7 @@ export default function Home() {
             fontSize: 12,
             zIndex: 2147483647,
             boxShadow: "0 6px 18px rgba(0,0,0,0.25)",
+            whiteSpace: "pre-line",
           }}
         >
           {goalTip}
@@ -218,10 +225,10 @@ export default function Home() {
       <div
         aria-label="app-version"
         style={{
-          position: "fixed",
-          left: "50%",
-          bottom: "calc(env(safe-area-inset-bottom) + 76px)",
-          transform: "translateX(-50%)",
+          display: "block",
+          position: "relative",
+          textAlign: "center",
+          margin: "16px 0",
           fontSize: 12,
           color: "#6b7280",
           opacity: 0.9,
@@ -229,7 +236,7 @@ export default function Home() {
           zIndex: 2147483646,
         }}
       >
-        v0.7
+        v0.8
       </div>
     </div>
   );

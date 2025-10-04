@@ -8,3 +8,12 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const SUPABASE_URL = supabaseUrl;
+export const SUPABASE_PROJECT_REF = (() => {
+  try {
+    const host = new URL(supabaseUrl).hostname; // e.g. abcdefgh.supabase.co
+    return host.split(".")[0];
+  } catch {
+    return "";
+  }
+})();

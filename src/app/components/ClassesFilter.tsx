@@ -4,7 +4,7 @@ import React, { useMemo, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import ClassTable, { ClassType } from "./ClassTable";
 import { goalToAnnualTarget, classifyProgress } from "./GoalSettings";
-import { IconChevronDown, IconPlus } from "@tabler/icons-react";
+import { IconChevronDown, IconPlus, IconInfoCircle, IconAlertTriangle, IconCircleX, IconSun, IconMedal, IconTarget } from "@tabler/icons-react";
 
 // Keep the type local to avoid importing from the table
 // (it mirrors the structure used by ClassTable)
@@ -21,6 +21,7 @@ export type ClassRow = {
   createdAt?: Date | string;
 };
 
+
 const MONTH_LABELS = [
   "Jan",
   "Feb",
@@ -35,6 +36,19 @@ const MONTH_LABELS = [
   "Nov",
   "Dec",
 ];
+
+// ---- Notes types & helpers ----
+export type NoteKind = "info" | "minor" | "major" | "camp" | "comp" | "focus";
+export type Note = { id: number; year: number; month: number; kind: NoteKind; text: string; created_at?: string };
+
+const KIND_META: Record<NoteKind, { label: string; bg: string; tint: string; Icon: any }> = {
+  info:  { label: "Note",           bg: "#eef6ff", tint: "#60a5fa", Icon: IconInfoCircle },
+  minor: { label: "Minor Injury",   bg: "#fff7ed", tint: "#f59e0b", Icon: IconAlertTriangle },
+  major: { label: "Major Injury",   bg: "#fee2e2", tint: "#f87171", Icon: IconCircleX },
+  camp:  { label: "BJJ Summer Camp",bg: "#ede9fe", tint: "#7c3aed", Icon: IconSun },
+  comp:  { label: "Competition",    bg: "#ecfdf5", tint: "#10b981", Icon: IconMedal },
+  focus: { label: "Training Focus",  bg: "#ecfeff", tint: "#06b6d4", Icon: IconTarget },
+};
 
 const ctlBase: React.CSSProperties = {
   padding: "10px 12px",
@@ -88,6 +102,82 @@ export default function ClassesFilter({ classes, onRowClick, onAddClick, onTotal
   const monthMenuRef = useRef<HTMLDivElement | null>(null);
   const monthBtnRef = useRef<HTMLButtonElement | null>(null);
   const [monthMenuPos, setMonthMenuPos] = useState<{top:number; left:number; width:number}>({top:0,left:0,width:220});
+
+  // Notes state
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [noteModalOpen, setNoteModalOpen] = useState(false);
+  const [noteYear, setNoteYear] = useState<number>(new Date().getFullYear());
+  const [noteMonth, setNoteMonth] = useState<number>(new Date().getMonth() + 1); // 1-12
+  const [noteKind, setNoteKind] = useState<NoteKind>("info");
+  const [noteText, setNoteText] = useState("");
+
+  // --- Note tooltip (shows on icon tap/click for up to 30s) ---
+  const [noteTip, setNoteTip] = useState<null | { text: string; tint: string; Icon: any }>(null);
+  const tipTimerRef = useRef<number | null>(null);
+  const closeNoteTip = React.useCallback(() => {
+    if (tipTimerRef.current) {
+      window.clearTimeout(tipTimerRef.current);
+      tipTimerRef.current = null;
+    }
+    setNoteTip(null);
+  }, []);
+  const openNoteTip = React.useCallback((n: Note) => {
+    const meta = KIND_META[n.kind];
+    setNoteTip({ text: n.text, tint: meta.tint, Icon: meta.Icon });
+    if (tipTimerRef.current) window.clearTimeout(tipTimerRef.current);
+    tipTimerRef.current = window.setTimeout(() => setNoteTip(null), 30000); // 30s
+  }, []);
+  React.useEffect(() => () => { if (tipTimerRef.current) window.clearTimeout(tipTimerRef.current); }, []);
+
+
+  // Listen for global Add Note command dispatched by the cog menu
+  React.useEffect(() => {
+    const handler = () => openAddNote();
+    window.addEventListener('bjj:add-note' as any, handler as any);
+    return () => window.removeEventListener('bjj:add-note' as any, handler as any);
+  }, []);
+
+  // Fetch notes when year changes; we filter by month client-side to support multi-select
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const params = new URLSearchParams();
+        if (year !== "all") params.set("year", String(year));
+        const res = await fetch(`/api/notes${params.size ? `?${params.toString()}` : ""}`, { cache: "no-store" });
+        const json = await res.json().catch(() => ({}));
+        setNotes(Array.isArray(json.notes) ? json.notes : []);
+      } catch {
+        setNotes([]);
+      }
+    })();
+  }, [year]);
+
+  const visibleNotes = useMemo(() => {
+    let list = notes;
+    if (year !== "all") list = list.filter(n => n.year === year);
+    if (months.length) list = list.filter(n => months.includes(n.month - 1));
+    return list;
+  }, [notes, year, months]);
+
+  const openAddNote = () => {
+    setNoteYear(year === "all" ? new Date().getFullYear() : year);
+    setNoteMonth(months.length ? months[0] + 1 : new Date().getMonth() + 1);
+    setNoteKind("info");
+    setNoteText("");
+    setNoteModalOpen(true);
+  };
+
+  async function saveNote() {
+    const payload = { year: noteYear, month: noteMonth, kind: noteKind, text: noteText };
+    const res = await fetch("/api/notes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    const json = await res.json().catch(() => null);
+    if (res.ok && json) {
+      setNotes(prev => [json, ...prev]);
+      setNoteModalOpen(false);
+    } else {
+      alert(json?.error || "Failed to save note");
+    }
+  }
 
   const [isMobile, setIsMobile] = useState(false);
   React.useEffect(() => {
@@ -500,6 +590,26 @@ export default function ClassesFilter({ classes, onRowClick, onAddClick, onTotal
         )}
       </div>
 
+      {/* Notes icons row (no container) */}
+      {visibleNotes.length > 0 && (
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', padding: isMobile ? '4px 0' : '6px 0' }}>
+          {visibleNotes.map(n => {
+            const M = KIND_META[n.kind];
+            const Ico = M.Icon;
+            return (
+              <div
+                key={n.id}
+                title={M.label}
+                onClick={() => openNoteTip(n)}
+                style={{ background: M.bg, borderRadius: 12, padding: 10, display: 'inline-flex', cursor: 'pointer' }}
+              >
+                <Ico size={20} stroke={2} color={M.tint} />
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {/* Result table */}
       <ClassTable
         classes={filtered.filter(hasDate)}
@@ -543,6 +653,71 @@ export default function ClassesFilter({ classes, onRowClick, onAddClick, onTotal
             </button>
           </div>
         </div>
+      )}
+      {noteModalOpen && typeof window !== 'undefined' && createPortal(
+        <div role="dialog" aria-modal="true" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div style={{ background: '#fff', borderRadius: 14, width: 'min(540px, 92vw)', boxShadow: '0 10px 30px rgba(0,0,0,0.2)' }}>
+            <div style={{ padding: '14px 16px', borderBottom: '1px solid #f3f4f6', fontWeight: 700 }}>Add note</div>
+            <div style={{ padding: '14px 16px', display: 'grid', gap: 10 }}>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <select value={noteYear} onChange={e => setNoteYear(Number(e.target.value))} style={{ ...ctlBase, flex: 1 }}>
+                  {[...new Set([new Date().getFullYear(), ...years])].sort((a,b)=>a-b).map(y => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+                <select value={noteMonth} onChange={e => setNoteMonth(Number(e.target.value))} style={{ ...ctlBase, flex: 1 }}>
+                  {MONTH_LABELS.map((m, i) => (
+                    <option key={m} value={i + 1}>{m}</option>
+                  ))}
+                </select>
+              </div>
+              <select value={noteKind} onChange={e => setNoteKind(e.target.value as NoteKind)} style={{ ...ctlBase }}>
+                <option value="info">Note</option>
+                <option value="minor">Minor injury</option>
+                <option value="major">Major injury</option>
+                <option value="camp">Training camp</option>
+                <option value="comp">Competition</option>
+                <option value="focus">Training focus</option>
+              </select>
+              <textarea value={noteText} onChange={e => setNoteText(e.target.value)} rows={4} placeholder="Type your note..." style={{ ...ctlBase, height: 'auto', minHeight: 120, resize: 'vertical' }} />
+            </div>
+            <div style={{ position: 'sticky', bottom: 0, padding: '12px 16px', borderTop: '1px solid #f3f4f6', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button onClick={() => setNoteModalOpen(false)} style={{ background: 'transparent', border: '1px solid #e5e7eb', borderRadius: 10, padding: '10px 14px', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+              <button onClick={saveNote} style={{ background: '#111', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 14px', fontWeight: 700, cursor: 'pointer' }}>Save</button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+      {noteTip && typeof window !== 'undefined' && createPortal(
+        <div
+          role="tooltip"
+          onClick={closeNoteTip}
+          style={{
+            position: 'fixed',
+            left: '50%',
+            bottom: 'calc(env(safe-area-inset-bottom) + 120px)',
+            transform: 'translateX(-50%)',
+            background: 'rgba(17,17,17,0.92)',
+            color: '#fff',
+            padding: '10px 12px',
+            borderRadius: 10,
+            fontSize: 13,
+            lineHeight: 1.4,
+            zIndex: 3000,
+            boxShadow: `0 0 0 2px ${noteTip.tint} inset, 0 6px 18px rgba(0,0,0,0.25)`,
+            maxWidth: 560,
+            width: 'calc(100vw - 28px)',
+            textAlign: 'left',
+            pointerEvents: 'auto',
+          }}
+        >
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            {React.createElement(noteTip.Icon, { size: 16, stroke: 2, color: noteTip.tint })}
+            <span>{noteTip.text}</span>
+          </span>
+        </div>,
+        document.body
       )}
     </div>
   );
