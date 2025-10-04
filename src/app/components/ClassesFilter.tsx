@@ -112,7 +112,7 @@ export default function ClassesFilter({ classes, onRowClick, onAddClick, onTotal
   const [noteText, setNoteText] = useState("");
 
   // --- Note tooltip (shows on icon tap/click for up to 30s) ---
-  const [noteTip, setNoteTip] = useState<null | { text: string; tint: string; Icon: any }>(null);
+  const [noteTip, setNoteTip] = useState<null | { title: string; text: string; tint: string; Icon: any }>(null);
   const tipTimerRef = useRef<number | null>(null);
   const closeNoteTip = React.useCallback(() => {
     if (tipTimerRef.current) {
@@ -123,7 +123,10 @@ export default function ClassesFilter({ classes, onRowClick, onAddClick, onTotal
   }, []);
   const openNoteTip = React.useCallback((n: Note) => {
     const meta = KIND_META[n.kind];
-    setNoteTip({ text: n.text, tint: meta.tint, Icon: meta.Icon });
+    const safeMonth = Math.max(1, Math.min(12, Number(n.month ?? 1)));
+    const dt = new Date(n.year, safeMonth - 1, 1);
+    const monthLabel = dt.toLocaleString(undefined, { month: 'long' });
+    setNoteTip({ title: `${monthLabel} ${n.year}`, text: n.text, tint: meta.tint, Icon: meta.Icon });
     if (tipTimerRef.current) window.clearTimeout(tipTimerRef.current);
     tipTimerRef.current = window.setTimeout(() => setNoteTip(null), 30000); // 30s
   }, []);
@@ -338,6 +341,101 @@ export default function ClassesFilter({ classes, onRowClick, onAddClick, onTotal
   React.useEffect(() => {
     onTotalsChange?.({ total: filtered.length, hours: totalHours, goal: goalBadge ?? null, yearsCount, goalDetail: goalDetail ?? undefined });
   }, [filtered.length, totalHours, goalBadge, yearsCount, goalDetail]);
+
+  // ---- Export selected year data as JSON (triggered via 'bjj:export-year')
+  const exportSelectedYear = React.useCallback(() => {
+    try {
+      const selectedYear = year === "all" ? null : year;
+      const classRows = (selectedYear === null ? classes : classes.filter(c => getYear(c.date) === selectedYear));
+
+      // compute totals
+      const hoursTotal = classRows.reduce((sum, c) => sum + (c.hours ?? 0), 0);
+
+      const iso = (d?: string | Date) => {
+        if (!d) return null;
+        const nd = new Date(d);
+        if (isNaN(nd.getTime())) return null;
+        const yyyy = nd.getFullYear();
+        const mm = String(nd.getMonth()+1).padStart(2,"0");
+        const dd = String(nd.getDate()).padStart(2,"0");
+        return `${yyyy}-${mm}-${dd}`;
+      };
+
+      const weekday = (d?: string | Date) => {
+        if (!d) return null;
+        const nd = new Date(d);
+        if (isNaN(nd.getTime())) return null;
+        return nd.toLocaleDateString(undefined, { weekday: "short" });
+      };
+
+      const classesOut = classRows
+        .filter(c => !!c.date)
+        .map((c) => ({
+          id: c.id,
+          date: iso(c.date)!,
+          weekday: weekday(c.date),
+          type: c.classType,
+          instructor: c.instructor,
+          technique: c.technique,
+          description: c.description ?? "",
+          hours: c.hours ?? 0,
+          style: c.style,
+          performance: (c as any).performance ?? null,
+          url: c.url ?? null,
+        }));
+
+      const notesOut = (selectedYear === null ? notes : notes.filter(n => n.year === selectedYear))
+        .map((n) => {
+          const dt = new Date(n.year, Math.max(1, Math.min(12, Number(n.month)))-1, 1);
+          const label = dt.toLocaleString(undefined, { month: "long", year: "numeric" });
+          return { year: n.year, month: n.month, kind: n.kind, text: n.text, label };
+        });
+
+      const payload: any = {
+        year: selectedYear ?? "all",
+        generatedAt: new Date().toISOString(),
+        summary: {
+          classes: classesOut.length,
+          hours: Number(hoursTotal.toFixed(2)),
+        },
+        classes: classesOut,
+        notes: notesOut,
+      };
+
+      // include goal context if relevant to selected year (only meaningful for current year)
+      if (selectedYear === new Date().getFullYear() && goalDetail) {
+        payload.summary.goal = {
+          metric: goalDetail.unit,
+          target: goalDetail.target,
+          ytd: goalDetail.ytd,
+          projected: Math.round(goalDetail.projected),
+          badge: goalBadge ?? null,
+        };
+      }
+
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const yname = selectedYear ?? "all";
+      const stamp = new Date();
+      const ts = `${stamp.getFullYear()}${String(stamp.getMonth()+1).padStart(2,"0")}${String(stamp.getDate()).padStart(2,"0")}-${String(stamp.getHours()).padStart(2,"0")}${String(stamp.getMinutes()).padStart(2,"0")}`;
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `bjj-export-${yname}-${ts}.json`;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        URL.revokeObjectURL(a.href);
+        a.remove();
+      }, 0);
+    } catch (e) {
+      alert("Export failed");
+    }
+  }, [year, classes, notes, goalDetail, goalBadge]);
+
+  React.useEffect(() => {
+    const handler = () => exportSelectedYear();
+    window.addEventListener('bjj:export-year' as any, handler as any);
+    return () => window.removeEventListener('bjj:export-year' as any, handler as any);
+  }, [exportSelectedYear]);
 
   return (
     <div style={{ display: "grid", gap: isMobile ? 8 : 10 }}>
@@ -712,10 +810,11 @@ export default function ClassesFilter({ classes, onRowClick, onAddClick, onTotal
             pointerEvents: 'auto',
           }}
         >
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
             {React.createElement(noteTip.Icon, { size: 16, stroke: 2, color: noteTip.tint })}
-            <span>{noteTip.text}</span>
-          </span>
+            <strong style={{ color: noteTip.tint }}>{noteTip.title}</strong>
+          </div>
+          <div style={{ whiteSpace: 'pre-line' }}>{noteTip.text}</div>
         </div>,
         document.body
       )}

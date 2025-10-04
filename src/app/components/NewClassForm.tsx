@@ -123,8 +123,18 @@ export default function NewClassForm({
     { key: "Great",    label: "💪 Great" },
   ] as const;
 
+  // Normalize legacy/saved performance strings to our keys
+  function normalizePerformance(v: unknown): string {
+    const s = String(v ?? "").toLowerCase().trim();
+    if (!s || s === "none" || s === "null" || s === "na" || s.includes("n/a")) return "None";
+    if (s.includes("great") || s.includes("💪")) return "Great";
+    if (s.includes("mediocre") || s.includes("ok") || s.includes("🙂")) return "Mediocre";
+    if (s.includes("bad") || s.includes("😕")) return "Bad";
+    return "None";
+  }
+
   const [performanceValue, setPerformanceValue] = React.useState<string>(
-    initialData?.performance ?? "None"
+    normalizePerformance(initialData?.performance)
   );
   const TECHNIQUE_OPTIONS = [
     "Passing",
@@ -240,6 +250,12 @@ export default function NewClassForm({
       document.removeEventListener("keydown", onKey);
     };
   }, [insOpen]);
+
+  // When the drawer opens with existing data, ensure performance is seeded correctly
+  React.useEffect(() => {
+    if (!open) return;
+    setPerformanceValue(normalizePerformance(initialData?.performance));
+  }, [open, initialData]);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();

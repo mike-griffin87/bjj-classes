@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { IconSettings, IconRefresh, IconNote, IconTarget } from "@tabler/icons-react";
+import { IconSettings, IconRefresh, IconNote, IconTarget, IconDownload } from "@tabler/icons-react";
 
 // ------- Types
 export type GoalMetric = "classes" | "hours";
@@ -251,6 +251,16 @@ export default function GoalSettings({
     }
   }, []);
 
+  const handleExportYear = React.useCallback(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('bjj:export-year'));
+      }
+    } finally {
+      setMenuOpen(false);
+    }
+  }, []);
+
   // --- UI Tokens (inline to avoid new files)
   const btn = {
     base: {
@@ -330,6 +340,16 @@ export default function GoalSettings({
           >
             <IconNote size={18} stroke={1.8} color="#6b7280" />
             <span>Add note</span>
+          </button>
+          <button
+            role="menuitem"
+            onClick={handleExportYear}
+            onMouseEnter={() => setHoverItem("export")}
+            onMouseLeave={() => setHoverItem(null)}
+            style={itemStyle("export")}
+          >
+            <IconDownload size={18} stroke={1.8} color="#6b7280" />
+            <span>Export data (JSON)</span>
           </button>
           <button
             role="menuitem"
