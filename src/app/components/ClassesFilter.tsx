@@ -81,7 +81,15 @@ function hasDate(row: ClassRow): row is ClassType {
   return row.date !== undefined;
 }
 
-export default function ClassesFilter({ classes, onRowClick, onAddClick, onTotalsChange, onBadgeTap }: { classes: ClassRow[]; onRowClick?: (c: ClassRow) => void; onAddClick?: () => void; onTotalsChange?: (t: { total: number; hours: number; goal: string | null; yearsCount?: number; goalDetail?: { unit: "classes" | "hours"; target: number; ytd: number; projected: number; needed: number } }) => void; onBadgeTap?: (p: { needed: number; unit: "classes" | "hours"; target: number; projected: number; ytd: number }) => void }) {
+function normalizePerf(v: unknown): 'great' | 'mediocre' | 'bad' | 'none' {
+  const s = String(v ?? '').toLowerCase();
+  if (s.includes('great') || s.includes('💪')) return 'great';
+  if (s.includes('mediocre') || s.includes('ok') || s.includes('okay') || s.includes('🙂')) return 'mediocre';
+  if (s.includes('bad') || s.includes('😕')) return 'bad';
+  return 'none';
+}
+
+export default function ClassesFilter({ classes, onRowClick, onAddClick, onTotalsChange, onBadgeTap }: { classes: ClassRow[]; onRowClick?: (c: ClassRow) => void; onAddClick?: () => void; onTotalsChange?: (t: { total: number; hours: number; goal: string | null; yearsCount?: number; goalDetail?: { unit: "classes" | "hours"; target: number; ytd: number; projected: number; needed: number }; perfCounts?: { great: number; mediocre: number; bad: number; none: number }; monthCounts?: number[]; avgClassesPerWeek?: number; hasActiveFilter?: boolean }) => void; onBadgeTap?: (p: { needed: number; unit: "classes" | "hours"; target: number; projected: number; ytd: number }) => void }) {
   // Derive available years from the data
   const years = useMemo(() => {
     const set = new Set<number>();
@@ -271,6 +279,19 @@ export default function ClassesFilter({ classes, onRowClick, onAddClick, onTotal
     return Array.from(set).sort((a, b) => a - b);
   }, [classes, year]);
 
+  // 12-month counts for the selected year (null when viewing All years)
+  const monthCounts = useMemo(() => {
+    if (year === 'all') return null as number[] | null;
+    const arr = Array(12).fill(0) as number[];
+    classes.forEach((c) => {
+      if (getYear(c.date) === year) {
+        const m = getMonthIndex(c.date);
+        if (m >= 0) arr[m]++;
+      }
+    });
+    return arr;
+  }, [classes, year]);
+
   // Labels for selected months & a compact summary for the button label
   const selectedMonthLabels = useMemo(() => {
     const sorted = [...months].sort((a, b) => a - b);
@@ -287,6 +308,32 @@ export default function ClassesFilter({ classes, onRowClick, onAddClick, onTotal
 
   const totalHours = useMemo(() => {
     return filtered.reduce((sum, c) => sum + (c.hours ?? 0), 0);
+  }, [filtered]);
+
+  const avgClassesPerWeek = useMemo(() => {
+    const now = new Date();
+    const yearNow = now.getFullYear();
+    const start = new Date(yearNow, 0, 1);
+    const weeks = Math.max(1, Math.ceil((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 7)));
+    let count = 0;
+    classes.forEach((c) => {
+      const d = c.date ? new Date(c.date) : null;
+      if (d && !Number.isNaN(d.getTime()) && d.getFullYear() === yearNow && d <= now) count++;
+    });
+    return Number((count / weeks).toFixed(1));
+  }, [classes]);
+  const hasActiveFilter = useMemo(() => {
+    return (months.length > 0) || ((query ?? '').trim() !== '');
+  }, [months, query]);
+
+  // Performance split from currently filtered rows
+  const perfCounts = useMemo(() => {
+    const counts = { great: 0, mediocre: 0, bad: 0, none: 0 };
+    filtered.forEach((c) => {
+      const cat = normalizePerf((c as any).performance);
+      counts[cat]++;
+    });
+    return counts;
   }, [filtered]);
 
   const yearsCount = useMemo(() => {
@@ -339,8 +386,18 @@ export default function ClassesFilter({ classes, onRowClick, onAddClick, onTotal
 
   // onTotalsChange is intentionally excluded from dependencies to avoid re-runs caused by changing function identity
   React.useEffect(() => {
-    onTotalsChange?.({ total: filtered.length, hours: totalHours, goal: goalBadge ?? null, yearsCount, goalDetail: goalDetail ?? undefined });
-  }, [filtered.length, totalHours, goalBadge, yearsCount, goalDetail]);
+    onTotalsChange?.({
+      total: filtered.length,
+      hours: totalHours,
+      goal: goalBadge ?? null,
+      yearsCount,
+      goalDetail: goalDetail ?? undefined,
+      perfCounts,
+      monthCounts: monthCounts ?? undefined,
+      avgClassesPerWeek,
+      hasActiveFilter,
+    });
+  }, [filtered.length, totalHours, goalBadge, yearsCount, goalDetail, perfCounts, monthCounts, avgClassesPerWeek, hasActiveFilter]);
 
   // ---- Export selected year data as JSON (triggered via 'bjj:export-year')
   const exportSelectedYear = React.useCallback(() => {

@@ -65,6 +65,7 @@ export function classifyProgress(actual: number, annualTarget: number, today = n
 
 // ------- Storage
 const STORAGE_KEY = "bjj-classes:goal:v1";
+const STATUS_KEY = "bjj-classes:show-status:v1";
 
 function loadStoredGoal(): GoalSettingsValue | null {
   try {
@@ -151,6 +152,26 @@ export default function GoalSettings({
   const [target, setTarget] = React.useState<number>(3);
   const [cadence, setCadence] = React.useState<GoalCadence>("weekly");
   const [year] = React.useState<number>(currentYear); // fixed to current year
+
+  // Show Status preference (controls visibility elsewhere via event)
+  const [showStatus, setShowStatus] = React.useState(true);
+  React.useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STATUS_KEY);
+      if (raw != null) setShowStatus(raw === '1' || raw === 'true');
+    } catch {}
+  }, []);
+  // Dispatch event after showStatus changes (except initial mount)
+  const didInitStatus = React.useRef(false);
+  React.useEffect(() => {
+    if (!didInitStatus.current) {
+      didInitStatus.current = true;
+      return;
+    }
+    try {
+      window.dispatchEvent(new CustomEvent('bjj:show-status-changed', { detail: { value: showStatus } }));
+    } catch {}
+  }, [showStatus]);
 
   const rootRef = React.useRef<HTMLDivElement | null>(null);
   React.useEffect(() => {
@@ -261,6 +282,14 @@ export default function GoalSettings({
     }
   }, []);
 
+  const handleToggleStatus = React.useCallback((nextValue?: boolean) => {
+    setShowStatus((prev) => {
+      const next = typeof nextValue === 'boolean' ? nextValue : !prev;
+      try { localStorage.setItem(STATUS_KEY, next ? '1' : '0'); } catch {}
+      return next;
+    });
+  }, []);
+
   // --- UI Tokens (inline to avoid new files)
   const btn = {
     base: {
@@ -361,6 +390,47 @@ export default function GoalSettings({
             <IconTarget size={18} stroke={1.8} color="#6b7280" />
             <span>Training goal</span>
           </button>
+          <div style={{ borderTop: '1px solid #e5e7eb', margin: '8px 0' }} />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px' }}>
+            <span style={{ fontSize: 12, color: '#6b7280', fontWeight: 500 }}>Show status</span>
+            <label style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center' }}>
+              <input
+                type="checkbox"
+                role="switch"
+                checked={showStatus}
+                onChange={(e) => handleToggleStatus(e.target.checked)}
+                style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}
+                aria-checked={showStatus}
+                aria-label="Show status"
+              />
+              <span
+                style={{
+                  width: 44,
+                  height: 26,
+                  borderRadius: 13,
+                  position: 'relative',
+                  background: showStatus ? '#22c55e' : '#e5e7eb',
+                  border: '1px solid #e5e7eb',
+                  transition: 'background 150ms',
+                }}
+                aria-hidden
+              >
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: 2,
+                    left: showStatus ? 24 : 2,
+                    width: 22,
+                    height: 22,
+                    borderRadius: '50%',
+                    background: '#fff',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
+                    transition: 'left 150ms',
+                  }}
+                />
+              </span>
+            </label>
+          </div>
         </div>
       )}
 
