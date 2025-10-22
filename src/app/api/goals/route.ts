@@ -1,7 +1,7 @@
 
 
 import { NextResponse } from "next/server";
-import { supabase } from "../../../../lib/supabaseClient";
+import { getAdminSupabase } from '../../../../lib/supabaseClient';
 
 type Metric = "classes" | "hours";
 
@@ -19,6 +19,8 @@ export async function GET(req: Request) {
     const url = new URL(req.url);
     const year = parseYear(url.searchParams.get("year"));
     const metric = parseMetric(url.searchParams.get("metric"));
+
+    const supabase = getAdminSupabase();
 
     const { data, error } = await supabase
       .from("goals")
@@ -44,6 +46,7 @@ export async function GET(req: Request) {
 
 export async function PUT(req: Request) {
   try {
+    const supabase = getAdminSupabase();
     const body = await req.json();
     const rawYear = body?.year as number | string | undefined;
     const rawMetric = body?.metric as string | undefined;

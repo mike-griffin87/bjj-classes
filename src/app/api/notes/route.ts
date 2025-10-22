@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase, SUPABASE_URL, SUPABASE_PROJECT_REF } from "../../../../lib/supabaseClient";
+import { getAdminSupabase, SUPABASE_URL, SUPABASE_PROJECT_REF } from '../../../../lib/supabaseClient';
 
 const ALLOWED_KINDS = ["info", "minor", "major", "camp", "comp", "focus"] as const;
 type Kind = (typeof ALLOWED_KINDS)[number];
@@ -30,6 +30,8 @@ export async function GET(req: Request) {
     const m = num(url.searchParams.get("month"));
     const k = parseKind(url.searchParams.get("kind"));
     const debug = url.searchParams.get("debug") === "1";
+
+    const supabase = getAdminSupabase();
 
     let q = supabase
       .from("notes")
@@ -72,6 +74,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
+    const supabase = getAdminSupabase();
     const body = await req.json().catch(() => ({}));
     const y = num((body as any).year) ?? new Date().getFullYear();
     const m = num((body as any).month) ?? new Date().getMonth() + 1; // 1-12

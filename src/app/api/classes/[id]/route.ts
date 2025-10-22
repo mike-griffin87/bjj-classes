@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase } from "../../../../../lib/supabaseClient";
+import { getAdminSupabase } from '../../../../../lib/supabaseClient';
 
 // Helpers
 function strOrNull(v: unknown): string | null {
@@ -80,6 +80,8 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       return NextResponse.json({ error: "Invalid id" }, { status: 400 });
     }
 
+    const supabase = getAdminSupabase();
+
     const body = await req.json().catch(() => ({}));
     const update = buildUpdate(body);
     if (Object.keys(update).length === 0) {
@@ -111,6 +113,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
   try {
+    const supabase = getAdminSupabase();
     const id = Number(params.id);
     if (!Number.isFinite(id)) {
       return NextResponse.json({ error: "Invalid id" }, { status: 400 });

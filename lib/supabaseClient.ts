@@ -1,19 +1,27 @@
-import { createClient } from '@supabase/supabase-js';
+// lib/supabaseClient.ts (server/admin only)
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables');
+export function getAdminSupabase(): SupabaseClient {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) {
+    throw new Error('Missing Supabase environment variables (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY)');
+  }
+  return createClient(url, key, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  });
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
-export const SUPABASE_URL = supabaseUrl;
+// (Optional helpers if you still need them elsewhere)
+export const SUPABASE_URL = process.env.SUPABASE_URL || '';
 export const SUPABASE_PROJECT_REF = (() => {
   try {
-    const host = new URL(supabaseUrl).hostname; // e.g. abcdefgh.supabase.co
-    return host.split(".")[0];
+    const host = new URL(SUPABASE_URL).hostname; // e.g. abcdefgh.supabase.co
+    return host.split('.')[0];
   } catch {
-    return "";
+    return '';
   }
 })();
