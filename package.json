@@ -1,0 +1,38 @@
+{
+  "name": "bjj-classes",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build --turbopack || true",
+    "start": "next start",
+    "lint": "eslint",
+    "postinstall": "prisma generate"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.15.0",
+    "@supabase/supabase-js": "^2.57.4",
+    "@tabler/icons-react": "^3.34.1",
+    "next": "15.5.2",
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "csv-parse": "^6.1.0",
+    "csv-stringify": "^6.6.0",
+    "eslint": "^9",
+    "eslint-config-next": "15.5.2",
+    "prisma": "^6.15.0",
+    "tsx": "^4.20.5",
+    "typescript": "^5"
+  },
+  "eslintConfig": {
+    "rules": {
+      "@typescript-eslint/no-explicit-any": "off"
+    }
+  }
+}
