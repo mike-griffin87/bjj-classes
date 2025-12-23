@@ -148,6 +148,16 @@ export default function ClassesFilter({ classes, onRowClick, onAddClick, onTotal
     return () => window.removeEventListener('bjj:add-note' as any, handler as any);
   }, []);
 
+  // Listen for show drilling toggle
+  const [showDrilling, setShowDrilling] = useState(true);
+  React.useEffect(() => {
+    const handler = (e: any) => {
+      setShowDrilling(e.detail.value);
+    };
+    window.addEventListener('bjj:show-drilling-changed', handler);
+    return () => window.removeEventListener('bjj:show-drilling-changed', handler);
+  }, []);
+
   // Fetch notes when year changes; we filter by month client-side to support multi-select
   React.useEffect(() => {
     (async () => {
@@ -250,7 +260,7 @@ export default function ClassesFilter({ classes, onRowClick, onAddClick, onTotal
 
   const filtered = useMemo(() => {
     const q = (query ?? "").toLowerCase();
-    return classes.filter((c) => {
+    let result = classes.filter((c) => {
       if (year !== "all") {
         const y = getYear(c.date);
         if (y !== year) return false;
@@ -264,7 +274,12 @@ export default function ClassesFilter({ classes, onRowClick, onAddClick, onTotal
       const tech = (c.technique ?? "").toLowerCase();
       return desc.includes(q) || tech.includes(q);
     });
-  }, [classes, year, months, query]);
+    // Apply drilling filter
+    if (!showDrilling) {
+      result = result.filter(c => !String(c.classType || "").toLowerCase().includes("drill"));
+    }
+    return result;
+  }, [classes, year, months, query, showDrilling]);
 
   const availableMonths = useMemo(() => {
     if (year === "all") return [] as number[];
@@ -284,7 +299,8 @@ export default function ClassesFilter({ classes, onRowClick, onAddClick, onTotal
     if (year === 'all') return null as number[] | null;
     const arr = Array(12).fill(0) as number[];
     classes.forEach((c) => {
-      if (getYear(c.date) === year) {
+      // Exclude drilling classes from monthly counts
+      if (!String(c.classType || "").toLowerCase().includes("drill") && getYear(c.date) === year) {
         const m = getMonthIndex(c.date);
         if (m >= 0) arr[m]++;
       }
@@ -307,7 +323,8 @@ export default function ClassesFilter({ classes, onRowClick, onAddClick, onTotal
   }, [selectedMonthLabels]);
 
   const totalHours = useMemo(() => {
-    return filtered.reduce((sum, c) => sum + (c.hours ?? 0), 0);
+    const nonDrilling = filtered.filter(c => !String(c.classType || "").toLowerCase().includes("drill"));
+    return nonDrilling.reduce((sum, c) => sum + (c.hours ?? 0), 0);
   }, [filtered]);
 
   const avgClassesPerWeek = useMemo(() => {
@@ -363,7 +380,8 @@ export default function ClassesFilter({ classes, onRowClick, onAddClick, onTotal
         return !!(d && !Number.isNaN(d.getTime()) && d.getFullYear() === thisYear);
       });
       const actualClasses = thisYearRows.length;
-      const actualHours = thisYearRows.reduce((sum, c) => sum + (c.hours ?? 0), 0);
+      const nonDrillingThisYear = thisYearRows.filter(c => !String(c.classType || "").toLowerCase().includes("drill"));
+      const actualHours = nonDrillingThisYear.reduce((sum, c) => sum + (c.hours ?? 0), 0);
 
       const annual = goalToAnnualTarget({ metric: g.metric, target: g.target, cadence: g.cadence, year: thisYear });
       // Build goal detail for tooltip
@@ -403,9 +421,10 @@ export default function ClassesFilter({ classes, onRowClick, onAddClick, onTotal
   const exportSelectedYear = React.useCallback(() => {
     try {
       const selectedYear = year === "all" ? null : year;
-      const classRows = (selectedYear === null ? classes : classes.filter(c => getYear(c.date) === selectedYear));
+      const rows = (selectedYear === null ? classes : classes.filter(c => getYear(c.date) === selectedYear));
 
-      // compute totals
+      // compute totals (exclude drilling)
+      const classRows = rows.filter(r => !String(r.classType || "").toLowerCase().includes("drill"));
       const hoursTotal = classRows.reduce((sum, c) => sum + (c.hours ?? 0), 0);
 
       const iso = (d?: string | Date) => {

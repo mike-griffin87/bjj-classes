@@ -66,6 +66,7 @@ export function classifyProgress(actual: number, annualTarget: number, today = n
 // ------- Storage
 const STORAGE_KEY = "bjj-classes:goal:v1";
 const STATUS_KEY = "bjj-classes:show-status:v1";
+const DRILLING_KEY = "bjj-classes:show-drilling:v1";
 
 function loadStoredGoal(): GoalSettingsValue | null {
   try {
@@ -172,6 +173,25 @@ export default function GoalSettings({
       window.dispatchEvent(new CustomEvent('bjj:show-status-changed', { detail: { value: showStatus } }));
     } catch {}
   }, [showStatus]);
+
+  // Show Drilling preference
+  const [showDrilling, setShowDrilling] = React.useState(true);
+  React.useEffect(() => {
+    try {
+      const raw = localStorage.getItem(DRILLING_KEY);
+      if (raw != null) setShowDrilling(raw === '1' || raw === 'true');
+    } catch {}
+  }, []);
+  const didInitDrilling = React.useRef(false);
+  React.useEffect(() => {
+    if (!didInitDrilling.current) {
+      didInitDrilling.current = true;
+      return;
+    }
+    try {
+      window.dispatchEvent(new CustomEvent('bjj:show-drilling-changed', { detail: { value: showDrilling } }));
+    } catch {}
+  }, [showDrilling]);
 
   const rootRef = React.useRef<HTMLDivElement | null>(null);
   React.useEffect(() => {
@@ -290,6 +310,14 @@ export default function GoalSettings({
     });
   }, []);
 
+  const handleToggleDrilling = React.useCallback((nextValue?: boolean) => {
+    setShowDrilling((prev) => {
+      const next = typeof nextValue === 'boolean' ? nextValue : !prev;
+      try { localStorage.setItem(DRILLING_KEY, next ? '1' : '0'); } catch {}
+      return next;
+    });
+  }, []);
+
   // --- UI Tokens (inline to avoid new files)
   const btn = {
     base: {
@@ -401,7 +429,7 @@ export default function GoalSettings({
                 onChange={(e) => handleToggleStatus(e.target.checked)}
                 style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}
                 aria-checked={showStatus}
-                aria-label="Show status"
+                aria-label="Show Data"
               />
               <span
                 style={{
@@ -420,6 +448,46 @@ export default function GoalSettings({
                     position: 'absolute',
                     top: 2,
                     left: showStatus ? 24 : 2,
+                    width: 22,
+                    height: 22,
+                    borderRadius: '50%',
+                    background: '#fff',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
+                    transition: 'left 150ms',
+                  }}
+                />
+              </span>
+            </label>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px' }}>
+            <span style={{ fontSize: 12, color: '#6b7280', fontWeight: 500 }}>Show drilling</span>
+            <label style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center' }}>
+              <input
+                type="checkbox"
+                role="switch"
+                checked={showDrilling}
+                onChange={(e) => handleToggleDrilling(e.target.checked)}
+                style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}
+                aria-checked={showDrilling}
+                aria-label="Show Drilling"
+              />
+              <span
+                style={{
+                  width: 44,
+                  height: 26,
+                  borderRadius: 13,
+                  position: 'relative',
+                  background: showDrilling ? '#22c55e' : '#e5e7eb',
+                  border: '1px solid #e5e7eb',
+                  transition: 'background 150ms',
+                }}
+                aria-hidden
+              >
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: 2,
+                    left: showDrilling ? 24 : 2,
                     width: 22,
                     height: 22,
                     borderRadius: '50%',

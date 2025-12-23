@@ -147,6 +147,9 @@ export default function NewClassForm({
   ] as const;
 
   const [teOpen, setTeOpen] = React.useState(false);
+  // Mode: 'class' (default) or 'drilling'
+  const [mode, setMode] = React.useState<"class" | "drilling">("class");
+  const [drillingLocation, setDrillingLocation] = React.useState<"home" | "gym">("home");
   const toggleTechniqueTag = (val: string) => {
     setTechniqueTags((prev) =>
       prev.includes(val) ? prev.filter((v) => v !== val) : [...prev, val]
@@ -255,6 +258,14 @@ export default function NewClassForm({
   React.useEffect(() => {
     if (!open) return;
     setPerformanceValue(normalizePerformance(initialData?.performance));
+    // Seed mode and drilling location when editing an existing row
+    try {
+      const ct = String(initialData?.classType || "").toLowerCase();
+      if (ct.includes("drill")) setMode("drilling");
+      else setMode("class");
+      const loc = String(initialData?.drillingLocation || "home").toLowerCase();
+      setDrillingLocation((loc === "gym" ? "gym" : "home") as "home" | "gym");
+    } catch {}
   }, [open, initialData]);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -268,8 +279,15 @@ export default function NewClassForm({
     // Build payload
     const payload = {
       date: String(fd.get("date") || "").trim(),
-      classType: classTypes.join(", "),
-      instructor: instructorValue,
+      classType: ((): string => {
+        // If drilling mode, prefer explicit drilling marker; otherwise use selected class types
+        if (mode === "drilling") return "Drilling";
+        // allow an explicit hidden classType field (form override)
+        const explicit = String(fd.get("classType") || "").trim();
+        if (explicit) return explicit;
+        return classTypes.join(", ");
+      })(),
+      instructor: mode === "drilling" ? (drillingLocation === "home" ? "Home" : "Gym") : instructorValue,
       technique: techniqueTags.join(", "),
       description: String(fd.get("description") || "").trim(),
       hours: ((): number | undefined => {
@@ -288,6 +306,8 @@ export default function NewClassForm({
         const v = String(fd.get("url") || "").trim();
         return v ? v : undefined;
       })(),
+      // include drillingLocation when in drilling mode
+      ...(mode === "drilling" ? { drillingLocation } : {}),
     } as const;
 
     if (!payload.date) {
@@ -459,9 +479,157 @@ export default function NewClassForm({
               ref={formRef}
               onSubmit={onSubmit}
               id={FORM_ID}
-              style={{ display: "grid", gap: 14 }}
+              style={{ display: "grid", gap: 24 }}
             >
-              <div>
+              {/* Mode toggle (Class vs Drilling) */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, background: "#f3f4f6", padding: 4, borderRadius: 12, marginBottom: 8 }}>
+                {[
+                  { key: "class", label: "Class" },
+                  { key: "drilling", label: "Drilling" },
+                ].map((opt) => {
+                  const isActive = mode === (opt.key as "class" | "drilling");
+                  return (
+                    <button
+                      key={opt.key}
+                      type="button"
+                      onClick={() => setMode(opt.key as "class" | "drilling")}
+                      aria-pressed={isActive}
+                      style={{
+                        border: "none",
+                        padding: "10px 14px",
+                        borderRadius: 10,
+                        cursor: "pointer",
+                        fontSize: 14,
+                        fontWeight: isActive ? 800 : 600,
+                        background: isActive ? "#111" : "transparent",
+                        color: isActive ? "#fff" : "#374151",
+                        boxShadow: isActive ? "0 2px 6px rgba(0,0,0,0.12)" : "none",
+                        transition: "all 120ms",
+                      }}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Drilling mode: simplified inputs */}
+              {mode === "drilling" ? (
+                <>
+                  <div style={{ marginTop: 24, marginBottom: 24 }}>
+                    <label style={input.label}>Description</label>
+                    <textarea
+                      name="description"
+                      rows={6}
+                      placeholder="What you worked on while drilling"
+                      style={{ ...input.base, resize: "vertical" }}
+                      defaultValue={initialData?.description || ""}
+                    />
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+                    <div>
+                      <label style={input.label}>Date</label>
+                      <input
+                        name="date"
+                        type="date"
+                        required
+                        defaultValue={
+                          initialData?.date
+                            ? new Date(initialData.date).toISOString().slice(0, 10)
+                            : today
+                        }
+                        style={input.base}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={input.label}>Hours</label>
+                      <input
+                        name="hours"
+                        type="number"
+                        step="0.25"
+                        placeholder="1.5"
+                        style={input.base}
+                        defaultValue={
+                          initialData?.hours !== undefined && initialData?.hours !== null
+                            ? initialData.hours
+                            : ""
+                        }
+                      />
+                    </div>
+
+                    <div>
+                      <label style={input.label}>Location</label>
+                      <input type="hidden" name="drillingLocation" value={drillingLocation} />
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                        {[{ key: "home", label: "Home" }, { key: "gym", label: "Gym" }].map((opt) => {
+                          const active = drillingLocation === opt.key;
+                          return (
+                            <button
+                              key={opt.key}
+                              type="button"
+                              onClick={() => setDrillingLocation(opt.key as "home" | "gym")}
+                              style={{
+                                ...input.base,
+                                padding: "10px 12px",
+                                textAlign: "center",
+                                cursor: "pointer",
+                                background: "#fff",
+                                color: active ? "#111" : "#6b7280",
+                                borderColor: active ? "#111" : "#e5e7eb",
+                                fontWeight: active ? 700 : 600,
+                              }}
+                            >
+                              {opt.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label style={input.label}>Style</label>
+                      <input type="hidden" name="style" value={styleValue} />
+                      {/* Hidden inputs to prevent controlled/uncontrolled warnings */}
+                      <input type="hidden" name="technique" value={techniqueTags.join(", ")} />
+                      <input type="hidden" name="performance" value={performanceValue} />
+                      <input type="hidden" name="performanceNotes" value="" />
+                      <input type="hidden" name="url" value="" />
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                        {[{ key: "gi", label: "Gi" }, { key: "nogi", label: "NoGi" }].map((opt) => {
+                          const active = styleValue === opt.key;
+                          return (
+                            <button
+                              key={opt.key}
+                              type="button"
+                              onClick={() => setStyleValue(opt.key)}
+                              style={{
+                                ...input.base,
+                                padding: "10px 12px",
+                                textAlign: "center",
+                                cursor: "pointer",
+                                background: "#fff",
+                                color: active ? "#111" : "#6b7280",
+                                borderColor: active ? "#111" : "#e5e7eb",
+                                fontWeight: active ? 700 : 600,
+                              }}
+                            >
+                              {opt.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Hidden classType to mark drilling rows */}
+                    <input type="hidden" name="classType" value="Drilling" />
+                  </div>
+                </>
+              ) : (
+                /* Existing full class form */
+                <>
+              <div style={{ marginTop: 24, marginBottom: 24 }}>
                 <label style={input.label}>Description</label>
                 <textarea
                   name="description"
@@ -473,7 +641,7 @@ export default function NewClassForm({
               </div>
 
               {/* Row 1: Date + Instructor (locked side-by-side) */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, alignItems: "stretch" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, alignItems: "stretch" }}>
                 <div>
                   <label style={input.label}>Date</label>
                   <input
@@ -567,8 +735,8 @@ export default function NewClassForm({
               </div>
 
               {/* Row 2: rest of fields */}
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 10 }}>
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-start", width: "100%" }}>
+              <div style={{ display: "flex", gap: 24, flexWrap: "wrap", marginTop: 16 }}>
+                <div style={{ display: "flex", gap: 24, flexWrap: "wrap", alignItems: "flex-start", width: "100%" }}>
                   <div style={{ minWidth: 280, flex: 1 }}>
                     <label style={input.label}>Class Type</label>
                     <div style={{ position: "relative" }}>
@@ -759,7 +927,7 @@ export default function NewClassForm({
               {/* Divider between Style and Performance */}
               <div style={{ height: 1, background: "#eef0f2", margin: "16px 0" }} />
               {/* Performance */}
-              <div style={{ display: "grid", gap: 10 }}>
+              <div style={{ display: "grid", gap: 24 }}>
                 <div>
                   {/* keep form data consistent */}
                   <input type="hidden" name="performance" value={performanceValue} />
@@ -841,6 +1009,8 @@ export default function NewClassForm({
               {success && (
                 <div style={{ color: "#065f46", fontWeight: 600 }}>{success}</div>
               )}
+
+              </>)}
 
             </form>
           </div>

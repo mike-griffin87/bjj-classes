@@ -1,0 +1,17 @@
+Version: 0.9.0
+Date: 2025-12-23
+Branch: feature-Drilling-hours
+
+Drilling Feature - Initial Implementation:
+- Added Class/Drilling mode toggle at top of Add Class drawer (full-width segmented control)
+- Drilling mode UI includes: date (defaults today), description, hours, location (Home/Gym toggle), style (Gi/NoGi)
+- Class mode remains unchanged with full form
+- Unified form spacing to 24px for consistency
+- Fixed controlled/uncontrolled input warnings
+- Drilling submissions marked with `classType: 'Drilling'` and include `drillingLocation` field
+- Instructor field excluded from drilling submissions to prevent unintended defaults
+
+Next steps:
+- Display drillingLocation in class table/dashboard
+- Persist drillingLocation in database schema if needed
+- Consider UI refinements based on user feedback

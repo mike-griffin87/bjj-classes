@@ -8,8 +8,9 @@ import GoalSettings from "@/app/components/GoalSettings";
 import { IconCircleCheck, IconArrowUpRight, IconAlertTriangle } from "@tabler/icons-react";
 
 function computeTotals(classes: any[]) {
-  const totalClasses = classes.length;
-  const totalHours = classes.reduce((sum, c) => sum + (c.hours ?? 0), 0);
+  const nonDrilling = classes.filter(c => !String(c.classType || "").toLowerCase().includes("drill"));
+  const totalClasses = nonDrilling.length;
+  const totalHours = nonDrilling.reduce((sum, c) => sum + (c.hours ?? 0), 0);
   return { totalClasses, totalHours };
 }
 
