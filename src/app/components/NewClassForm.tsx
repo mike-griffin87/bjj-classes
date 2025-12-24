@@ -513,135 +513,20 @@ export default function NewClassForm({
                 })}
               </div>
 
-              {/* Drilling mode: simplified inputs */}
-              {mode === "drilling" ? (
-                <>
-                  <div style={{ marginTop: 24, marginBottom: 24 }}>
-                    <label style={input.label}>Description</label>
-                    <textarea
-                      name="description"
-                      rows={6}
-                      placeholder="What you worked on while drilling"
-                      style={{ ...input.base, resize: "vertical" }}
-                      defaultValue={initialData?.description || ""}
-                    />
-                  </div>
-
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
-                    <div>
-                      <label style={input.label}>Date</label>
-                      <input
-                        name="date"
-                        type="date"
-                        required
-                        defaultValue={
-                          initialData?.date
-                            ? new Date(initialData.date).toISOString().slice(0, 10)
-                            : today
-                        }
-                        style={input.base}
-                      />
-                    </div>
-
-                    <div>
-                      <label style={input.label}>Hours</label>
-                      <input
-                        name="hours"
-                        type="number"
-                        step="0.25"
-                        placeholder="1.5"
-                        style={input.base}
-                        defaultValue={
-                          initialData?.hours !== undefined && initialData?.hours !== null
-                            ? initialData.hours
-                            : ""
-                        }
-                      />
-                    </div>
-
-                    <div>
-                      <label style={input.label}>Location</label>
-                      <input type="hidden" name="drillingLocation" value={drillingLocation} />
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                        {[{ key: "home", label: "Home" }, { key: "gym", label: "Gym" }].map((opt) => {
-                          const active = drillingLocation === opt.key;
-                          return (
-                            <button
-                              key={opt.key}
-                              type="button"
-                              onClick={() => setDrillingLocation(opt.key as "home" | "gym")}
-                              style={{
-                                ...input.base,
-                                padding: "10px 12px",
-                                textAlign: "center",
-                                cursor: "pointer",
-                                background: "#fff",
-                                color: active ? "#111" : "#6b7280",
-                                borderColor: active ? "#111" : "#e5e7eb",
-                                fontWeight: active ? 700 : 600,
-                              }}
-                            >
-                              {opt.label}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    <div>
-                      <label style={input.label}>Style</label>
-                      <input type="hidden" name="style" value={styleValue} />
-                      {/* Hidden inputs to prevent controlled/uncontrolled warnings */}
-                      <input type="hidden" name="technique" value={techniqueTags.join(", ")} />
-                      <input type="hidden" name="performance" value={performanceValue} />
-                      <input type="hidden" name="performanceNotes" value="" />
-                      <input type="hidden" name="url" value="" />
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                        {[{ key: "gi", label: "Gi" }, { key: "nogi", label: "NoGi" }].map((opt) => {
-                          const active = styleValue === opt.key;
-                          return (
-                            <button
-                              key={opt.key}
-                              type="button"
-                              onClick={() => setStyleValue(opt.key)}
-                              style={{
-                                ...input.base,
-                                padding: "10px 12px",
-                                textAlign: "center",
-                                cursor: "pointer",
-                                background: "#fff",
-                                color: active ? "#111" : "#6b7280",
-                                borderColor: active ? "#111" : "#e5e7eb",
-                                fontWeight: active ? 700 : 600,
-                              }}
-                            >
-                              {opt.label}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Hidden classType to mark drilling rows */}
-                    <input type="hidden" name="classType" value="Drilling" />
-                  </div>
-                </>
-              ) : (
-                /* Existing full class form */
-                <>
+              {/* Unified Description */}
               <div style={{ marginTop: 24, marginBottom: 24 }}>
                 <label style={input.label}>Description</label>
                 <textarea
                   name="description"
-                  rows={8}
-                  placeholder="Key notes / drills / sparring focus"
+                  rows={mode === "drilling" ? 6 : 8}
+                  placeholder={mode === "drilling" ? "What you worked on while drilling" : "Key notes / drills / sparring focus"}
                   style={{ ...input.base, resize: "vertical" }}
                   defaultValue={initialData?.description || ""}
                 />
               </div>
 
-              {/* Row 1: Date + Instructor (locked side-by-side) */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, alignItems: "stretch" }}>
+              {/* Date (always shown) */}
+              <div style={{ display: "grid", gridTemplateColumns: mode === "class" ? "1fr 1fr" : "1fr", gap: 24, alignItems: "stretch" }}>
                 <div>
                   <label style={input.label}>Date</label>
                   <input
@@ -656,9 +541,10 @@ export default function NewClassForm({
                     style={input.base}
                   />
                 </div>
-                <div>
+
+                {/* Instructor (class mode only - always rendered, visibility controlled) */}
+                <div style={{ display: mode === "class" ? "block" : "none" }}>
                   <label style={input.label}>Instructor</label>
-                  {/* hidden input so form data stays consistent */}
                   <input type="hidden" name="instructor" value={instructorValue} />
                   <div style={{ position: "relative" }}>
                     <button
@@ -734,8 +620,8 @@ export default function NewClassForm({
                 </div>
               </div>
 
-              {/* Row 2: rest of fields */}
-              <div style={{ display: "flex", gap: 24, flexWrap: "wrap", marginTop: 16 }}>
+              {/* Class-specific fields row (always rendered, visibility controlled) */}
+              <div style={{ display: mode === "class" ? "flex" : "none", gap: 24, flexWrap: "wrap", marginTop: 16 }}>
                 <div style={{ display: "flex", gap: 24, flexWrap: "wrap", alignItems: "flex-start", width: "100%" }}>
                   <div style={{ minWidth: 280, flex: 1 }}>
                     <label style={input.label}>Class Type</label>
@@ -805,125 +691,160 @@ export default function NewClassForm({
                         </div>, document.body)}
                     </div>
                   </div>
-                </div>
-                <div style={{ minWidth: 240, flex: 1 }}>
-                  <label style={input.label}>Technique</label>
-                  <div style={{ position: "relative" }}>
-                    <button
-                      ref={teBtnRef}
-                      type="button"
-                      onClick={() => setTeOpen((v) => !v)}
-                      aria-haspopup="listbox"
-                      aria-expanded={teOpen}
-                      style={{
-                        ...input.base,
-                        background: "#fff",
-                        borderColor: "#e5e7eb",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        cursor: "pointer",
-                      }}
-                    >
-                      <span style={{ color: techniqueTags.length ? "#111" : "#9ca3af" }}>
-                        {techniqueTags.length ? techniqueTags.join(", ") : "Select technique tags"}
-                      </span>
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                    </button>
-                    {teOpen && teStyle && createPortal(
-                      <div
-                        ref={teMenuRef}
-                        role="listbox"
-                        aria-multiselectable
+                  <div style={{ minWidth: 240, flex: 1 }}>
+                    <label style={input.label}>Technique</label>
+                    <div style={{ position: "relative" }}>
+                      <button
+                        ref={teBtnRef}
+                        type="button"
+                        onClick={() => setTeOpen((v) => !v)}
+                        aria-haspopup="listbox"
+                        aria-expanded={teOpen}
                         style={{
-                          ...teStyle,
+                          ...input.base,
                           background: "#fff",
-                          border: "1px solid #eef0f2",
-                          borderRadius: 14,
-                          boxShadow: "0 12px 28px rgba(0,0,0,0.12)",
-                          maxHeight: 260,
-                          overflow: "auto",
-                          zIndex: 3000,
+                          borderColor: "#e5e7eb",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          cursor: "pointer",
                         }}
                       >
-                        {TECHNIQUE_OPTIONS.map((opt) => {
-                          const checked = techniqueTags.includes(opt);
-                          return (
-                            <div
-                              key={opt}
-                              onClick={() => toggleTechniqueTag(opt)}
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 12,
-                                padding: "12px 14px",
-                                cursor: "pointer",
-                                userSelect: "none",
-                                transition: "background 120ms",
-                              }}
-                            >
-                              <span aria-hidden style={{ width: 18, height: 18, borderRadius: 6, border: checked ? "1px solid #111" : "1px solid #d1d5db", background: checked ? "#111" : "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
-                                {checked && (
-                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                                )}
-                              </span>
-                              <span style={{ fontWeight: 500, fontSize: 15 }}>{opt}</span>
-                            </div>
-                          );
-                        })}
-                      </div>, document.body)}
-                  </div>
-                </div>
-                <div style={{ minWidth: 120, flex: 1 }}>
-                  <label style={input.label}>Hours</label>
-                  <input
-                    name="hours"
-                    type="number"
-                    step="0.25"
-                    placeholder="1.5"
-                    style={input.base}
-                    defaultValue={
-                      initialData?.hours !== undefined && initialData?.hours !== null
-                        ? initialData.hours
-                        : ""
-                    }
-                  />
-                </div>
-                <div style={{ minWidth: 160, flex: 1 }}>
-                  <label style={input.label}>Style</label>
-                  {/* Hidden input to keep form data consistent */}
-                  <input type="hidden" name="style" value={styleValue} />
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                    {[
-                      { key: "gi", label: "Gi" },
-                      { key: "nogi", label: "NoGi" },
-                    ].map((opt) => {
-                      const active = styleValue === opt.key;
-                      return (
-                        <button
-                          key={opt.key}
-                          type="button"
-                          onClick={() => setStyleValue(opt.key)}
+                        <span style={{ color: techniqueTags.length ? "#111" : "#9ca3af" }}>
+                          {techniqueTags.length ? techniqueTags.join(", ") : "Select technique tags"}
+                        </span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                      </button>
+                      {teOpen && teStyle && createPortal(
+                        <div
+                          ref={teMenuRef}
+                          role="listbox"
+                          aria-multiselectable
                           style={{
-                            ...input.base,
-                            padding: "10px 12px",
-                            textAlign: "center",
-                            cursor: "pointer",
+                            ...teStyle,
                             background: "#fff",
-                            color: active ? "#111" : "#6b7280",
-                            borderColor: active ? "#111" : "#e5e7eb",
-                            fontWeight: active ? 700 : 600,
-                            transition: "border-color 120ms, color 120ms",
+                            border: "1px solid #eef0f2",
+                            borderRadius: 14,
+                            boxShadow: "0 12px 28px rgba(0,0,0,0.12)",
+                            maxHeight: 260,
+                            overflow: "auto",
+                            zIndex: 3000,
                           }}
                         >
-                          {opt.label}
-                        </button>
-                      );
-                    })}
+                          {TECHNIQUE_OPTIONS.map((opt) => {
+                            const checked = techniqueTags.includes(opt);
+                            return (
+                              <div
+                                key={opt}
+                                onClick={() => toggleTechniqueTag(opt)}
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 12,
+                                  padding: "12px 14px",
+                                  cursor: "pointer",
+                                  userSelect: "none",
+                                  transition: "background 120ms",
+                                }}
+                              >
+                                <span aria-hidden style={{ width: 18, height: 18, borderRadius: 6, border: checked ? "1px solid #111" : "1px solid #d1d5db", background: checked ? "#111" : "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                                  {checked && (
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                  )}
+                                </span>
+                                <span style={{ fontWeight: 500, fontSize: 15 }}>{opt}</span>
+                              </div>
+                            );
+                          })}
+                        </div>, document.body)}
+                    </div>
                   </div>
                 </div>
               </div>
 
+              {/* Drilling location (drilling mode only - always rendered, visibility controlled) */}
+              <div style={{ display: mode === "drilling" ? "block" : "none" }}>
+                <label style={input.label}>Location</label>
+                <input type="hidden" name="drillingLocation" value={drillingLocation} />
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  {[{ key: "home", label: "Home" }, { key: "gym", label: "Gym" }].map((opt) => {
+                    const active = drillingLocation === opt.key;
+                    return (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        onClick={() => setDrillingLocation(opt.key as "home" | "gym")}
+                        style={{
+                          ...input.base,
+                          padding: "10px 12px",
+                          textAlign: "center",
+                          cursor: "pointer",
+                          background: "#fff",
+                          color: active ? "#111" : "#6b7280",
+                          borderColor: active ? "#111" : "#e5e7eb",
+                          fontWeight: active ? 700 : 600,
+                        }}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Hours (both modes) */}
+              <div style={{ minWidth: 120, maxWidth: 180 }}>
+                <label style={input.label}>Hours</label>
+                <input
+                  name="hours"
+                  type="number"
+                  step="0.25"
+                  placeholder="1.5"
+                  style={input.base}
+                  defaultValue={
+                    initialData?.hours !== undefined && initialData?.hours !== null
+                      ? initialData.hours
+                      : ""
+                  }
+                />
+              </div>
+
+              {/* Style (both modes) */}
+              <div style={{ minWidth: 160, maxWidth: 280 }}>
+                <label style={input.label}>Style</label>
+                <input type="hidden" name="style" value={styleValue} />
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  {[
+                    { key: "gi", label: "Gi" },
+                    { key: "nogi", label: "NoGi" },
+                  ].map((opt) => {
+                    const active = styleValue === opt.key;
+                    return (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        onClick={() => setStyleValue(opt.key)}
+                        style={{
+                          ...input.base,
+                          padding: "10px 12px",
+                          textAlign: "center",
+                          cursor: "pointer",
+                          background: "#fff",
+                          color: active ? "#111" : "#6b7280",
+                          borderColor: active ? "#111" : "#e5e7eb",
+                          fontWeight: active ? 700 : 600,
+                          transition: "border-color 120ms, color 120ms",
+                        }}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Performance (class mode only - always rendered, visibility controlled) */}
+              <div style={{ display: mode === "class" ? "block" : "none" }}>
               {/* Divider between Style and Performance */}
               <div style={{ height: 1, background: "#eef0f2", margin: "16px 0" }} />
               {/* Performance */}
@@ -1003,14 +924,14 @@ export default function NewClassForm({
                 )}
               </div>
 
+              {mode === "drilling" && <input type="hidden" name="classType" value="Drilling" />}
+
               {error && (
                 <div style={{ color: "#b91c1c", fontWeight: 600 }}>{error}</div>
               )}
               {success && (
                 <div style={{ color: "#065f46", fontWeight: 600 }}>{success}</div>
               )}
-
-              </>)}
 
             </form>
           </div>

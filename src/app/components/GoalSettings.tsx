@@ -67,6 +67,7 @@ export function classifyProgress(actual: number, annualTarget: number, today = n
 const STORAGE_KEY = "bjj-classes:goal:v1";
 const STATUS_KEY = "bjj-classes:show-status:v1";
 const DRILLING_KEY = "bjj-classes:show-drilling:v1";
+const PROGRESS_KEY = "bjj-classes:show-progress:v1";
 
 function loadStoredGoal(): GoalSettingsValue | null {
   try {
@@ -192,6 +193,7 @@ export default function GoalSettings({
       window.dispatchEvent(new CustomEvent('bjj:show-drilling-changed', { detail: { value: showDrilling } }));
     } catch {}
   }, [showDrilling]);
+ 
 
   const rootRef = React.useRef<HTMLDivElement | null>(null);
   React.useEffect(() => {
@@ -318,6 +320,7 @@ export default function GoalSettings({
     });
   }, []);
 
+
   // --- UI Tokens (inline to avoid new files)
   const btn = {
     base: {
@@ -420,7 +423,7 @@ export default function GoalSettings({
           </button>
           <div style={{ borderTop: '1px solid #e5e7eb', margin: '8px 0' }} />
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px' }}>
-            <span style={{ fontSize: 12, color: '#6b7280', fontWeight: 500 }}>Show status</span>
+            <span style={{ fontSize: 12, color: '#6b7280', fontWeight: 500 }}>Show charts</span>
             <label style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center' }}>
               <input
                 type="checkbox"
@@ -499,6 +502,7 @@ export default function GoalSettings({
               </span>
             </label>
           </div>
+          
         </div>
       )}
 

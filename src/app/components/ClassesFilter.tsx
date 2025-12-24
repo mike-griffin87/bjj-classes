@@ -89,7 +89,7 @@ function normalizePerf(v: unknown): 'great' | 'mediocre' | 'bad' | 'none' {
   return 'none';
 }
 
-export default function ClassesFilter({ classes, onRowClick, onAddClick, onTotalsChange, onBadgeTap }: { classes: ClassRow[]; onRowClick?: (c: ClassRow) => void; onAddClick?: () => void; onTotalsChange?: (t: { total: number; hours: number; goal: string | null; yearsCount?: number; goalDetail?: { unit: "classes" | "hours"; target: number; ytd: number; projected: number; needed: number }; perfCounts?: { great: number; mediocre: number; bad: number; none: number }; monthCounts?: number[]; avgClassesPerWeek?: number; hasActiveFilter?: boolean }) => void; onBadgeTap?: (p: { needed: number; unit: "classes" | "hours"; target: number; projected: number; ytd: number }) => void }) {
+export default function ClassesFilter({ classes, onRowClick, onAddClick, onTotalsChange, onBadgeTap }: { classes: ClassRow[]; onRowClick?: (c: ClassRow) => void; onAddClick?: () => void; onTotalsChange?: (t: { total: number; hours: number; goal: string | null; yearsCount?: number; goalDetail?: { unit: "classes" | "hours"; target: number; ytd: number; projected: number; needed: number }; perfCounts?: { great: number; mediocre: number; bad: number; none: number }; monthCounts?: number[]; monthDrillingHours?: number[]; avgClassesPerWeek?: number; hasActiveFilter?: boolean }) => void; onBadgeTap?: (p: { needed: number; unit: "classes" | "hours"; target: number; projected: number; ytd: number }) => void }) {
   // Derive available years from the data
   const years = useMemo(() => {
     const set = new Set<number>();
@@ -308,6 +308,21 @@ export default function ClassesFilter({ classes, onRowClick, onAddClick, onTotal
     return arr;
   }, [classes, year]);
 
+  // 12-month drilling hours for the selected year (null when viewing All years)
+  const monthDrillingHours = useMemo(() => {
+    if (year === 'all') return null as number[] | null;
+    const arr = Array(12).fill(0) as number[];
+    classes.forEach((c) => {
+      // Only drilling classes - check for classType containing "drill"
+      const isDrilling = String(c.classType || "").toLowerCase().includes("drill");
+      if (isDrilling && getYear(c.date) === year) {
+        const m = getMonthIndex(c.date);
+        if (m >= 0) arr[m] += (c.hours ?? 0);
+      }
+    });
+    return arr;
+  }, [classes, year]);
+
   // Labels for selected months & a compact summary for the button label
   const selectedMonthLabels = useMemo(() => {
     const sorted = [...months].sort((a, b) => a - b);
@@ -412,10 +427,11 @@ export default function ClassesFilter({ classes, onRowClick, onAddClick, onTotal
       goalDetail: goalDetail ?? undefined,
       perfCounts,
       monthCounts: monthCounts ?? undefined,
+      monthDrillingHours: monthDrillingHours ?? undefined,
       avgClassesPerWeek,
       hasActiveFilter,
     });
-  }, [filtered.length, totalHours, goalBadge, yearsCount, goalDetail, perfCounts, monthCounts, avgClassesPerWeek, hasActiveFilter]);
+  }, [filtered.length, totalHours, goalBadge, yearsCount, goalDetail, perfCounts, monthCounts, monthDrillingHours, avgClassesPerWeek, hasActiveFilter]);
 
   // ---- Export selected year data as JSON (triggered via 'bjj:export-year')
   const exportSelectedYear = React.useCallback(() => {

@@ -20,7 +20,6 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [editRow, setEditRow] = useState<any | null>(null);
 
-  const [isMobile, setIsMobile] = useState(false);
   // Show/Hide dashboard status (persisted in localStorage, controlled from GoalSettings)
   const [showStatus, setShowStatus] = useState<boolean>(true);
   useEffect(() => {
@@ -37,13 +36,13 @@ export default function Home() {
     return () => window.removeEventListener('bjj:show-status-changed' as any, onStatus as any);
   }, []);
 
+  // Progress panel hidden by default for now
+  const showProgress = false;
+
+  // Hydration guard: only render interactive content after client hydration
+  const [isHydrated, setIsHydrated] = useState(false);
   useEffect(() => {
-    function handleResize() {
-      setIsMobile(window.innerWidth <= 480);
-    }
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+    setIsHydrated(true);
   }, []);
 
   const { totalClasses, totalHours } = computeTotals(classes);
@@ -55,6 +54,7 @@ export default function Home() {
     goalDetail?: { unit: "classes" | "hours"; target: number; ytd: number; projected: number; needed: number };
     perfCounts?: { great: number; mediocre: number; bad: number; none: number };
     monthCounts?: number[];
+    monthDrillingHours?: number[];
     avgClassesPerWeek?: number;
     hasActiveFilter?: boolean;
   } | null>(null);
@@ -101,7 +101,7 @@ export default function Home() {
   const badgeStyle = getBadgeStyle(badgeText);
   const badgeIcon = getBadgeIcon(badgeText);
 
-  const handleTotalsChange = useCallback((totals: { total: number; hours: number; goal: string | null; yearsCount?: number; goalDetail?: { unit: "classes" | "hours"; target: number; ytd: number; projected: number; needed: number }; perfCounts?: { great: number; mediocre: number; bad: number; none: number }; monthCounts?: number[]; avgClassesPerWeek?: number; hasActiveFilter?: boolean }) => {
+  const handleTotalsChange = useCallback((totals: { total: number; hours: number; goal: string | null; yearsCount?: number; goalDetail?: { unit: "classes" | "hours"; target: number; ytd: number; projected: number; needed: number }; perfCounts?: { great: number; mediocre: number; bad: number; none: number }; monthCounts?: number[]; monthDrillingHours?: number[]; avgClassesPerWeek?: number; hasActiveFilter?: boolean }) => {
     setFilteredTotals({
       totalClasses: totals.total,
       totalHours: totals.hours,
@@ -110,6 +110,7 @@ export default function Home() {
       goalDetail: totals.goalDetail,
       perfCounts: totals.perfCounts,
       monthCounts: totals.monthCounts,
+      monthDrillingHours: totals.monthDrillingHours,
       avgClassesPerWeek: totals.avgClassesPerWeek,
       hasActiveFilter: totals.hasActiveFilter,
     });
@@ -133,11 +134,13 @@ export default function Home() {
   const perfTotal = pc ? pc.great + pc.mediocre + pc.bad + pc.none : 0;
   const pct = (n: number) => (perfTotal ? Math.round((n / perfTotal) * 100) : 0);
   const monthsArr = ft?.monthCounts;
+  const monthDrillingArr = ft?.monthDrillingHours;
   const monthMax = monthsArr && monthsArr.length ? Math.max(1, ...monthsArr) : 1;
+  const drillingMax = monthDrillingArr && monthDrillingArr.length ? Math.max(1, ...monthDrillingArr) : 1;
   const MONTH_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  const trackH = isMobile ? 78 : 100;
-  const bubbleSize = isMobile ? 24 : 26;
-  const trackW = isMobile ? 12 : 14;
+  const trackH = 160;
+  const bubbleSize = 32;
+  const trackW = 42;
 
   // Dim Avg when any filter is applied (from ClassesFilter)
   const dimAvg = !!ft?.hasActiveFilter;
@@ -189,211 +192,233 @@ export default function Home() {
     };
   }, []);
 
+  // Calculate total drilling hours
+  const totalDrillingHours = monthDrillingArr ? monthDrillingArr.reduce((sum, h) => sum + h, 0) : 0;
+
+  // Format hours: only show decimal if needed
+  const formatHours = (h: number) => {
+    const str = h.toFixed(1);
+    return str.endsWith('.0') ? str.slice(0, -2) : str;
+  };
+
   return (
-    <div style={{ padding: isMobile ? "1rem" : "2rem", fontFamily: "Arial, sans-serif" }}>
-      <div
-        style={
-          isMobile
-            ? { display: "flex", flexDirection: "column", gap: 6, marginBottom: 12 }
-            : { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }
-        }
-      >
-        <h1 style={{ margin: 0, fontSize: isMobile ? 20 : undefined }}>BJJ Classes</h1>
-        {isMobile ? (
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12, color: "#374151" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              {(filteredTotals?.totalClasses ?? totalClasses)} • {(filteredTotals?.totalHours ?? totalHours).toFixed(2)} hrs
+      <div style={{ padding: "2rem", fontFamily: "Arial, sans-serif" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+          <h1 style={{ margin: 0 }}>BJJ Classes</h1>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
+              {/* Classes pill */}
+              <div style={{ 
+                backgroundColor: "#f3f4f6", 
+                padding: "6px 12px", 
+                borderRadius: 16, 
+                fontSize: 13, 
+                color: "#374151",
+                fontWeight: 500,
+                whiteSpace: "nowrap"
+              }}>
+                {(filteredTotals?.totalClasses ?? totalClasses)} classes
+              </div>
+              {/* Training hours pill */}
+              <div style={{ 
+                backgroundColor: "#f3f4f6", 
+                padding: "6px 12px", 
+                borderRadius: 16, 
+                fontSize: 13, 
+                color: "#374151",
+                fontWeight: 500,
+                whiteSpace: "nowrap"
+              }}>
+                {formatHours(filteredTotals?.totalHours ?? totalHours)}h hours
+              </div>
+              {/* Drilling hours pill */}
+              <div style={{ 
+                backgroundColor: "#f3f4f6", 
+                padding: "6px 12px", 
+                borderRadius: 16, 
+                fontSize: 13, 
+                color: "#374151",
+                fontWeight: 500,
+                whiteSpace: "nowrap"
+              }}>
+                {formatHours(totalDrillingHours)}h drilling
+              </div>
               {yearsCount && yearsCount > 1 && (
-                <span>• {yearsCount} years</span>
+                <div style={{ 
+                  fontSize: 11, 
+                  color: "#9ca3af",
+                  marginLeft: 4
+                }}>
+                  ({yearsCount} years)
+                </div>
               )}
+              {/* Divider */}
+              <div style={{ 
+                width: 1, 
+                height: 24, 
+                backgroundColor: "#e5e7eb",
+                margin: "0 4px"
+              }} />
+              {/* Goal pill */}
+              <div style={{ 
+                backgroundColor: "#f3f4f6", 
+                padding: "6px 12px", 
+                borderRadius: 16, 
+                fontSize: 13, 
+                color: "#374151",
+                fontWeight: 500,
+                whiteSpace: "nowrap"
+              }}>
+                {gd ? `Goal: ${gd.target}${gd.unit === 'hours' ? 'h' : ''}` : 'No goal'}
+              </div>
             </div>
             <GoalSettings />
           </div>
-        ) : (
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#374151" }}>
-              {(filteredTotals?.totalClasses ?? totalClasses)} • {(filteredTotals?.totalHours ?? totalHours).toFixed(2)} hrs
-              {yearsCount && yearsCount > 1 && (
-                <span>• {yearsCount} years</span>
-              )}
-            </div>
-            <GoalSettings />
+        </div>
+
+        {/* Dashboard */}
+        {showStatus && isHydrated && (
+        <div style={{ marginBottom: 12 }}>
+          <div
+            style={{
+              display: 'grid',
+              gap: 8,
+              gridTemplateColumns: '1fr',
+              marginTop: 0,
+            }}
+          >
+              {/* PROGRESS (combined) */}
+              
+              {/* Progress panel intentionally hidden for now; monthly widget occupies full width */}
+
+              {/* MONTHLY PILLS */}
+              <div style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: '12px 14px', background: '#fff' }}>
+                <div style={{ fontSize: 12, color: '#6b7280' }}>Monthly classes & drilling</div>
+                <div style={{ marginTop: 10 }}>
+                  {monthsArr && monthsArr.length > 0 ? (
+                    <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 10 }}>
+                      {monthsArr.map((cnt, i) => {
+                        const classesPct = Math.round((cnt / monthMax) * 100);
+                        const classesPercent = Math.max(0, Math.min(100, classesPct));
+                        const drillingHours = monthDrillingArr?.[i] ?? 0;
+                        const drillingPct = Math.round((drillingHours / drillingMax) * 100);
+                        const drillingPercent = Math.max(0, Math.min(100, drillingPct));
+                        const initial = MONTH_SHORT[i]?.charAt(0) ?? '';
+                        const barSpacing = 3;
+                        const barW = (trackW - barSpacing) / 2;
+                        
+                        // Check if month is empty/disabled (no classes and no drilling hours)
+                        const isDisabled = cnt === 0 && drillingHours === 0;
+                        
+                        const classesColor = isDisabled ? '#d1d5db' : '#4f46e5';
+                        const drillingColor = isDisabled ? '#d1d5db' : '#f59e0b';
+                        const classesLightBg = isDisabled ? '#f3f4f6' : '#eef2ff';
+                        const drillingLightBg = isDisabled ? '#f3f4f6' : '#fffbeb';
+                        return (
+                          <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
+                            {/* Two bars side by side */}
+                            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', height: trackH }}>
+                              {/* Classes bar */}
+                              <div style={{ position: 'relative', width: barW, height: trackH, background: classesLightBg, borderRadius: 9999, overflow: 'visible', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+                                <div style={{ width: '100%', height: `${classesPercent}%`, background: classesColor, borderRadius: 9999 }} />
+                                <div style={{ position: 'absolute', bottom: -28, whiteSpace: 'nowrap', fontWeight: 800, fontSize: 14, color: classesColor }}>
+                                  {cnt}
+                                </div>
+                              </div>
+                              {/* Drilling hours bar */}
+                              <div style={{ position: 'relative', width: barW, height: trackH, background: drillingLightBg, borderRadius: 9999, overflow: 'visible', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+                                <div style={{ width: '100%', height: `${drillingPercent}%`, background: drillingColor, borderRadius: 9999 }} />
+                                <div style={{ position: 'absolute', bottom: -28, whiteSpace: 'nowrap', fontWeight: 800, fontSize: 14, color: drillingColor }}>
+                                  {drillingHours.toFixed(1).replace(/\.0$/, '')}
+                                </div>
+                              </div>
+                            </div>
+                            <div style={{ marginTop: 44, fontSize: 12, color: '#6b7280', fontWeight: 600 }}>{initial}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 12, color: '#6b7280', marginTop: 6 }}>Select a year to see month-by-month.</div>
+                  )}
+                </div>
+              </div>
+          </div>
+        </div>
+        )}
+
+        <ClassesFilter
+          classes={classes}
+          onAddClick={() => setOpenNew(true)}
+          onRowClick={(row) => setEditRow(row)}
+          onTotalsChange={handleTotalsChange}
+        />
+
+        {loading && (
+          <div style={{ marginTop: 10, color: "#6b7280", fontSize: 13 }}>Loading…</div>
+        )}
+
+        {openNew && (
+          <NewClassForm
+            open={openNew}
+            onClose={() => {
+              setOpenNew(false);
+              // reload to reflect newly added class
+              load();
+            }}
+          />
+        )}
+
+        {editRow && (
+          <NewClassForm
+            open={true}
+            initialData={editRow}
+            onClose={() => {
+              setEditRow(null);
+              // reload to reflect edited class
+              load();
+            }}
+          />
+        )}
+        {goalTip && (
+          <div
+            role="tooltip"
+            onClick={() => { if (goalTipTimerRef.current) window.clearTimeout(goalTipTimerRef.current); setGoalTip(null); }}
+            style={{
+              position: "fixed",
+              left: "50%",
+              bottom: "calc(env(safe-area-inset-bottom) + 120px)",
+              transform: "translateX(-50%)",
+              background: "rgba(17,17,17,0.92)",
+              color: "#fff",
+              padding: "10px 12px",
+              borderRadius: 10,
+              fontSize: 12,
+              zIndex: 2147483647,
+              boxShadow: "0 6px 18px rgba(0,0,0,0.25)",
+              whiteSpace: "pre-line",
+            }}
+          >
+            {goalTip}
           </div>
         )}
-      </div>
-
-      {/* Dashboard */}
-      {showStatus && (
-      <div style={{ marginBottom: 12 }}>
+        {/* Version badge (fixed near bottom; above Add button) */}
         <div
+          aria-label="app-version"
           style={{
-            display: 'grid',
-            gap: 8,
-            gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr',
-            marginTop: 0,
-          }}
-        >
-            {/* PROGRESS (combined) */}
-            <div style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: '10px 12px', background: '#fff' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ fontSize: 12, color: '#6b7280' }}>Progress</div>
-                {showBadge && (
-                  <div onClick={openGoalTip} role="button" aria-label="Show goal details" style={{ display: 'inline-flex', borderRadius: 9999, padding: '2px 8px', fontSize: 12, cursor: 'pointer', ...badgeStyle }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                      {badgeIcon}
-                      {badgeText}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* Big line: YTD / Target */}
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 6 }}>
-                <div style={{ fontSize: 26, fontWeight: 800 }}>{ytdVal}</div>
-                {gd ? (
-                  <div style={{ fontSize: 13, color: '#6b7280' }}>/ {gd.target} {gd.unit}</div>
-                ) : (
-                  <div style={{ fontSize: 13, color: '#6b7280' }}>/ {targetVal} {unit}</div>
-                )}
-              </div>
-
-              {/* Progress bar */}
-              <div style={{ height: 9, marginTop: 8, position: 'relative', background: '#f3f4f6', borderRadius: 9999 }}>
-                <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.round(Math.min(1, (progressFrac ?? 0)) * 100)}%`, background: barColor, borderRadius: 9999 }} />
-              </div>
-
-              {/* Mini KPI row */}
-              <div style={{ display: 'grid', gap: 6, gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(5, 1fr)', marginTop: 8 }}>
-                <div>
-                  <div style={{ fontSize: 12, color: '#6b7280' }}>Classes</div>
-                  <div style={{ fontWeight: 700 }}>{kpiClasses}</div>
-                </div>
-                <div style={{ paddingLeft: isMobile ? 0 : 10, borderLeft: isMobile ? 'none' : '1px solid #f3f4f6' }}>
-                  <div style={{ fontSize: 12, color: '#6b7280' }}>Hours</div>
-                  <div style={{ fontWeight: 700 }}>{kpiHours.toFixed(1)}</div>
-                </div>
-                <div style={{ paddingLeft: isMobile ? 0 : 10, borderLeft: isMobile ? 'none' : '1px solid #f3f4f6' }}>
-                  <div style={{ fontSize: 12, color: dimAvg ? '#9ca3af' : '#6b7280' }}>Avg / wk</div>
-                  <div style={{ fontWeight: 700, color: dimAvg ? '#9ca3af' : undefined }} title={dimAvg ? 'Average is year-to-date; a filter is active.' : undefined}>{avgPerWeek}</div>
-                </div>
-                <div style={{ paddingLeft: isMobile ? 0 : 10, borderLeft: isMobile ? 'none' : '1px solid #f3f4f6' }}>
-                  <div style={{ fontSize: 12, color: dimProjRem ? '#9ca3af' : '#6b7280' }}>Projected</div>
-                  <div style={{ fontWeight: 700, color: dimProjRem ? '#9ca3af' : undefined }} title={dimProjRem ? 'Projected ignores filters; based on full year.' : undefined}>{Math.round(projectedVal)} {unit}</div>
-                </div>
-                <div style={{ paddingLeft: isMobile ? 0 : 10, borderLeft: isMobile ? 'none' : '1px solid #f3f4f6' }}>
-                  <div style={{ fontSize: 12, color: dimProjRem ? '#9ca3af' : '#6b7280' }}>Remaining</div>
-                  <div style={{ fontWeight: 700, color: dimProjRem ? '#9ca3af' : undefined }} title={dimProjRem ? 'Remaining ignores filters; based on full year.' : undefined}>{Math.max(0, Math.round(remainingVal))} {unit}</div>
-                </div>
-              </div>
-
-            </div>
-
-            {/* MONTHLY PILLS */}
-            <div style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: '12px 14px', background: '#fff' }}>
-              <div style={{ fontSize: 12, color: '#6b7280' }}>Monthly classes</div>
-              {monthsArr ? (
-                <div style={{ marginTop: 10 }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 10 }}>
-                    {monthsArr.map((cnt, i) => {
-                      const hPct = Math.round((cnt / monthMax) * 100);
-                      const fillPct = Math.max(0, Math.min(100, hPct));
-                      const initial = MONTH_SHORT[i]?.charAt(0) ?? '';
-                      return (
-                        <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
-                          <div style={{ position: 'relative', width: trackW, height: trackH, background: '#e5e7eb', borderRadius: 9999, overflow: 'visible', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-                            <div style={{ width: '100%', height: `${fillPct}%`, background: '#111827', borderRadius: trackW }} />
-                            {cnt > 0 && (
-                              <div style={{ position: 'absolute', bottom: -bubbleSize/2, width: bubbleSize, height: bubbleSize, borderRadius: '50%', background: '#111827', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: isMobile ? 12 : 13 }}>
-                                {cnt}
-                              </div>
-                            )}
-                          </div>
-                          <div style={{ marginTop: bubbleSize/2 + 8, fontSize: 12, color: '#111' }}>{initial}</div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : (
-                <div style={{ fontSize: 12, color: '#6b7280', marginTop: 6 }}>Select a year to see month-by-month.</div>
-              )}
-            </div>
-        </div>
-      </div>
-      )}
-
-      <ClassesFilter
-        classes={classes}
-        onAddClick={() => setOpenNew(true)}
-        onRowClick={(row) => setEditRow(row)}
-        onTotalsChange={handleTotalsChange}
-      />
-
-      {loading && (
-        <div style={{ marginTop: 10, color: "#6b7280", fontSize: 13 }}>Loading…</div>
-      )}
-
-      {openNew && (
-        <NewClassForm
-          open={openNew}
-          onClose={() => {
-            setOpenNew(false);
-            // reload to reflect newly added class
-            load();
-          }}
-        />
-      )}
-
-      {editRow && (
-        <NewClassForm
-          open={true}
-          initialData={editRow}
-          onClose={() => {
-            setEditRow(null);
-            // reload to reflect edited class
-            load();
-          }}
-        />
-      )}
-      {goalTip && (
-        <div
-          role="tooltip"
-          onClick={() => { if (goalTipTimerRef.current) window.clearTimeout(goalTipTimerRef.current); setGoalTip(null); }}
-          style={{
-            position: "fixed",
-            left: "50%",
-            bottom: "calc(env(safe-area-inset-bottom) + 120px)",
-            transform: "translateX(-50%)",
-            background: "rgba(17,17,17,0.92)",
-            color: "#fff",
-            padding: "10px 12px",
-            borderRadius: 10,
+            display: "block",
+            position: "relative",
+            textAlign: "center",
+            margin: "16px 0",
             fontSize: 12,
-            zIndex: 2147483647,
-            boxShadow: "0 6px 18px rgba(0,0,0,0.25)",
-            whiteSpace: "pre-line",
+            color: "#6b7280",
+            opacity: 0.9,
+            pointerEvents: "none",
+            zIndex: 2147483646,
           }}
         >
-          {goalTip}
+          v0.9
         </div>
-      )}
-      {/* Version badge (fixed near bottom; above Add button) */}
-      <div
-        aria-label="app-version"
-        style={{
-          display: "block",
-          position: "relative",
-          textAlign: "center",
-          margin: "16px 0",
-          fontSize: 12,
-          color: "#6b7280",
-          opacity: 0.9,
-          pointerEvents: "none",
-          zIndex: 2147483646,
-        }}
-      >
-        v0.9
       </div>
-    </div>
   );
 }
