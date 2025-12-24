@@ -923,6 +923,7 @@ export default function NewClassForm({
                   </div>
                 )}
               </div>
+              </div>
 
               {mode === "drilling" && <input type="hidden" name="classType" value="Drilling" />}
 
