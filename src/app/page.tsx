@@ -199,80 +199,81 @@ export default function Home() {
 
   return (
       <div style={{ padding: "2rem", fontFamily: "Arial, sans-serif" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+        {/* Title and Settings Row */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
           <h1 style={{ margin: 0 }}>BJJ Classes</h1>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            {isMounted && (
-            <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
-              {/* Classes pill */}
-              <div style={{ 
-                backgroundColor: "#f3f4f6", 
-                padding: "6px 12px", 
-                borderRadius: 16, 
-                fontSize: 13, 
-                color: "#374151",
-                fontWeight: 500,
-                whiteSpace: "nowrap"
-              }}>
-                {(filteredTotals?.totalClasses ?? totalClasses)} classes
-              </div>
-              {/* Training hours pill */}
-              <div style={{ 
-                backgroundColor: "#f3f4f6", 
-                padding: "6px 12px", 
-                borderRadius: 16, 
-                fontSize: 13, 
-                color: "#374151",
-                fontWeight: 500,
-                whiteSpace: "nowrap"
-              }}>
-                {formatHours(filteredTotals?.totalHours ?? totalHours)}h hours
-              </div>
-              {/* Drilling hours pill */}
-              <div style={{ 
-                backgroundColor: "#f3f4f6", 
-                padding: "6px 12px", 
-                borderRadius: 16, 
-                fontSize: 13, 
-                color: "#374151",
-                fontWeight: 500,
-                whiteSpace: "nowrap"
-              }}>
-                {formatHours(totalDrillingHours)}h drilling
-              </div>
-              {yearsCount && yearsCount > 1 && (
-                <div style={{ 
-                  fontSize: 11, 
-                  color: "#9ca3af",
-                  marginLeft: 4
-                }}>
-                  ({yearsCount} years)
-                </div>
-              )}
-              {/* Divider */}
-              <div style={{ 
-                width: 1, 
-                height: 24, 
-                backgroundColor: "#e5e7eb",
-                margin: "0 4px"
-              }} />
-              {/* Goal pill */}
-              <div style={{ 
-                backgroundColor: "#f3f4f6", 
-                padding: "6px 12px", 
-                borderRadius: 16, 
-                fontSize: 13, 
-                color: "#374151",
-                fontWeight: 500,
-                whiteSpace: "nowrap"
-              }}>
-                {gd ? `Goal: ${gd.target}${gd.unit === 'hours' ? 'h' : ''}` : 'No goal'}
-              </div>
+          <GoalSettings />
+        </div>
+        
+        {/* Metric Pills Row */}
+        {isMounted && (
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+          {/* Classes pill */}
+          <div style={{ 
+            backgroundColor: "#f3f4f6", 
+            padding: "6px 12px", 
+            borderRadius: 16, 
+            fontSize: 13, 
+            color: "#374151",
+            fontWeight: 500,
+            whiteSpace: "nowrap"
+          }}>
+            {(filteredTotals?.totalClasses ?? totalClasses)} classes
+          </div>
+          {/* Training hours pill */}
+          <div style={{ 
+            backgroundColor: "#f3f4f6", 
+            padding: "6px 12px", 
+            borderRadius: 16, 
+            fontSize: 13, 
+            color: "#374151",
+            fontWeight: 500,
+            whiteSpace: "nowrap"
+          }}>
+            {formatHours(filteredTotals?.totalHours ?? totalHours)}h hours
+          </div>
+          {/* Drilling hours pill */}
+          <div style={{ 
+            backgroundColor: "#f3f4f6", 
+            padding: "6px 12px", 
+            borderRadius: 16, 
+            fontSize: 13, 
+            color: "#374151",
+            fontWeight: 500,
+            whiteSpace: "nowrap"
+          }}>
+            {formatHours(totalDrillingHours)}h drilling
+          </div>
+          {yearsCount && yearsCount > 1 && (
+            <div style={{ 
+              fontSize: 11, 
+              color: "#9ca3af",
+              marginLeft: 4
+            }}>
+              ({yearsCount} years)
             </div>
-            )}
-            <GoalSettings />
+          )}
+          {/* Divider */}
+          <div style={{ 
+            width: 1, 
+            height: 24, 
+            backgroundColor: "#e5e7eb",
+            margin: "0 4px"
+          }} />
+          {/* Goal pill */}
+          <div style={{ 
+            backgroundColor: "#f3f4f6", 
+            padding: "6px 12px", 
+            borderRadius: 16, 
+            fontSize: 13, 
+            color: "#374151",
+            fontWeight: 500,
+            whiteSpace: "nowrap"
+          }}>
+            {gd ? `Goal: ${gd.target}${gd.unit === 'hours' ? 'h' : ''}` : 'No goal'}
           </div>
         </div>
+        )}
 
         {/* Dashboard */}
         {showStatus && (
@@ -292,9 +293,9 @@ export default function Home() {
               {/* MONTHLY PILLS */}
               <div style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: '12px 14px', background: '#fff' }}>
                 <div style={{ fontSize: 12, color: '#6b7280' }}>Monthly classes & drilling</div>
-                <div style={{ marginTop: 10 }}>
+                <div style={{ marginTop: 10, overflowX: 'auto', overflowY: 'hidden' }}>
                   {monthsArr && monthsArr.length > 0 ? (
-                    <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, minWidth: 'max-content', paddingBottom: 4 }}>
                       {monthsArr.map((cnt, i) => {
                         const classesPct = Math.round((cnt / monthMax) * 100);
                         const classesPercent = Math.max(0, Math.min(100, classesPct));
