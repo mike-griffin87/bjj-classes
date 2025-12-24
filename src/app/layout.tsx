@@ -18,7 +18,6 @@ export const metadata: Metadata = {
   description: "Track BJJ classes, techniques, and goals.",
   applicationName: "BJJ Classes",
   manifest: "/manifest.webmanifest",
-  themeColor: "#111111",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -30,6 +29,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  themeColor: "#111111",
 };
 
 export default function RootLayout({
