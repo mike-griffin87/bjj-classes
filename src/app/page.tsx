@@ -39,13 +39,8 @@ export default function Home() {
   // Progress panel hidden by default for now
   const showProgress = false;
 
-  // Hydration guard: only render interactive content after client hydration
-  const [isHydrated, setIsHydrated] = useState(false);
-  useEffect(() => {
-    setIsHydrated(true);
-  }, []);
-
   const { totalClasses, totalHours } = computeTotals(classes);
+  const [isMounted, setIsMounted] = useState(false);
   const [filteredTotals, setFilteredTotals] = useState<{
     totalClasses: number;
     totalHours: number;
@@ -75,6 +70,7 @@ export default function Home() {
 
   useEffect(() => {
     load();
+    setIsMounted(true);
   }, []);
 
   function getBadgeStyle(text: string) {
@@ -206,6 +202,7 @@ export default function Home() {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
           <h1 style={{ margin: 0 }}>BJJ Classes</h1>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            {isMounted && (
             <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
               {/* Classes pill */}
               <div style={{ 
@@ -272,12 +269,13 @@ export default function Home() {
                 {gd ? `Goal: ${gd.target}${gd.unit === 'hours' ? 'h' : ''}` : 'No goal'}
               </div>
             </div>
+            )}
             <GoalSettings />
           </div>
         </div>
 
         {/* Dashboard */}
-        {showStatus && isHydrated && (
+        {showStatus && (
         <div style={{ marginBottom: 12 }}>
           <div
             style={{
@@ -417,7 +415,7 @@ export default function Home() {
             zIndex: 2147483646,
           }}
         >
-          v0.9
+          v1.00
         </div>
       </div>
   );
