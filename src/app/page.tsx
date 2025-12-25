@@ -291,11 +291,18 @@ export default function Home() {
               {/* Progress panel intentionally hidden for now; monthly widget occupies full width */}
 
               {/* MONTHLY PILLS */}
-              <div style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: '12px 14px', background: '#fff' }}>
+              <div style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: '12px 14px', background: '#fff', overflow: 'hidden' }}>
                 <div style={{ fontSize: 12, color: '#6b7280' }}>Monthly classes & drilling</div>
-                <div style={{ marginTop: 10, overflowX: 'auto', overflowY: 'hidden' }}>
+                <div style={{ 
+                  marginTop: 10, 
+                  overflowX: 'auto', 
+                  overflowY: 'hidden',
+                  WebkitOverflowScrolling: 'touch' as any,
+                  width: '100%',
+                  paddingBottom: 8
+                }}>
                   {monthsArr && monthsArr.length > 0 ? (
-                    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, minWidth: 'max-content', paddingBottom: 4 }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'flex-end', gap: 10 }}>
                       {monthsArr.map((cnt, i) => {
                         const classesPct = Math.round((cnt / monthMax) * 100);
                         const classesPercent = Math.max(0, Math.min(100, classesPct));
@@ -303,8 +310,7 @@ export default function Home() {
                         const drillingPct = Math.round((drillingHours / drillingMax) * 100);
                         const drillingPercent = Math.max(0, Math.min(100, drillingPct));
                         const initial = MONTH_SHORT[i]?.charAt(0) ?? '';
-                        const barSpacing = 3;
-                        const barW = (trackW - barSpacing) / 2;
+                        const barW = 16; // Fixed bar width for consistent sizing
                         
                         // Check if month is empty/disabled (no classes and no drilling hours)
                         const isDisabled = cnt === 0 && drillingHours === 0;
@@ -314,9 +320,9 @@ export default function Home() {
                         const classesLightBg = isDisabled ? '#f3f4f6' : '#eef2ff';
                         const drillingLightBg = isDisabled ? '#f3f4f6' : '#fffbeb';
                         return (
-                          <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
+                          <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 70, flexShrink: 0 }}>
                             {/* Two bars side by side */}
-                            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', height: trackH }}>
+                            <div style={{ display: 'flex', gap: 6, alignItems: 'flex-end', height: trackH }}>
                               {/* Classes bar */}
                               <div style={{ position: 'relative', width: barW, height: trackH, background: classesLightBg, borderRadius: 9999, overflow: 'visible', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
                                 <div style={{ width: '100%', height: `${classesPercent}%`, background: classesColor, borderRadius: 9999 }} />
