@@ -24,14 +24,14 @@ function normalizeStyle(v: unknown): "gi" | "nogi" | null {
   return low === "gi" || low === "nogi" ? (low as "gi" | "nogi") : null;
 }
 
-function normalizePerformance(v: unknown): "BAD" | "OK" | "GREAT" | null {
-  if (v === undefined || v === null) return null;
+function normalizePerformance(v: unknown): "NONE" | "BAD" | "OK" | "GREAT" {
+  if (v === undefined || v === null) return "NONE";
   const s = String(v).trim().toLowerCase();
-  if (["none", "n/a", "na", "not added", "notadded"].includes(s)) return null;
+  if (["none", "n/a", "na", "not added", "notadded"].includes(s)) return "NONE";
   if (["bad", "poor", "rough", "😕"].includes(s)) return "BAD";
   if (["ok", "okay", "mediocre", "avg", "average", "🙂"].includes(s)) return "OK";
   if (["great", "good", "strong", "awesome", "💪"].includes(s)) return "GREAT";
-  return null;
+  return "NONE";
 }
 
 // Build a partial update object from arbitrary input

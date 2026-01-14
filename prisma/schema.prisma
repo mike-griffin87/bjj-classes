@@ -21,13 +21,14 @@ model Class {
   style       String?  // "gi" or "nogi"
   url         String?
   createdAt   DateTime @default(now())
-  performance   Performance @default(OK)
+  performance   Performance @default(NONE)
   performanceNotes String?
 
   @@map("classes")
 }
 
 enum Performance {
+  NONE  @map("NONE")
   BAD   @map("BAD")
   OK    @map("OK")
   GREAT @map("GREAT")

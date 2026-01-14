@@ -117,6 +117,7 @@ export default function NewClassForm({
   const [styleValue, setStyleValue] = React.useState<string>(initialData?.style || "nogi");
   // Performance (self-assessment)
   const PERFORMANCE_OPTIONS = [
+    { key: "N/A",      label: "➖ N/A" },
     { key: "Bad",      label: "😕 Bad" },
     { key: "Mediocre", label: "🙂 OK" },
     { key: "Great",    label: "💪 Great" },
@@ -133,7 +134,7 @@ export default function NewClassForm({
   }
 
   const [performanceValue, setPerformanceValue] = React.useState<string>(
-    () => normalizePerformance(initialData?.performance) || "Mediocre"
+    () => normalizePerformance(initialData?.performance) || "N/A"
   );
   const TECHNIQUE_OPTIONS = [
     "Passing",
@@ -259,8 +260,8 @@ export default function NewClassForm({
     
     // Re-seed performance value
     const s = String(initialData?.performance ?? "").toLowerCase().trim();
-    let perfValue = "Mediocre"; // default to Mediocre instead of None
-    if (s && s !== "none" && s !== "null") {
+    let perfValue = "N/A"; // default to N/A
+    if (s && s !== "none" && s !== "null" && s !== "n/a") {
       if (s.includes("great") || s.includes("💪")) perfValue = "Great";
       else if (s.includes("mediocre") || s.includes("ok") || s.includes("🙂")) perfValue = "Mediocre";
       else if (s.includes("bad") || s.includes("😕")) perfValue = "Bad";
@@ -346,13 +347,6 @@ export default function NewClassForm({
     if (!payload.date) {
       setSubmitting(false);
       setError("Date is required");
-      return;
-    }
-    
-    // Validate performance is set for class mode
-    if (mode === "class" && (!payload.performance || payload.performance === "None")) {
-      setSubmitting(false);
-      setError("Performance rating is required");
       return;
     }
 
@@ -892,7 +886,7 @@ export default function NewClassForm({
                 <div>
                   {/* keep form data consistent */}
                   <input type="hidden" name="performance" value={performanceValue} />
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6 }}>
                     {PERFORMANCE_OPTIONS.map((opt) => {
                       const active = performanceValue === opt.key;
                       return (
@@ -919,16 +913,18 @@ export default function NewClassForm({
                     })}
                   </div>
                 </div>
-                <div>
-                  <label style={input.label}>Notes</label>
-                  <textarea
-                    name="performanceNotes"
-                    rows={4}
-                    placeholder="What went well / needs work"
-                    style={{ ...input.base, resize: "vertical" }}
-                    defaultValue={initialData?.performanceNotes || ""}
-                  />
-                </div>
+                {performanceValue !== "N/A" && (
+                  <div>
+                    <label style={input.label}>Notes</label>
+                    <textarea
+                      name="performanceNotes"
+                      rows={4}
+                      placeholder="What went well / needs work"
+                      style={{ ...input.base, resize: "vertical" }}
+                      defaultValue={initialData?.performanceNotes || ""}
+                    />
+                  </div>
+                )}
               </div>
 
               <div>

@@ -30,12 +30,11 @@ Bug Fixes & Security:
 - Enhanced form state management to properly re-seed all fields when editing (performance, classTypes, techniques, instructor, style)
 
 Performance Validation & Database Schema:
-- Removed "None/N/A" option from performance selector (now only Bad, OK, Great)
-- Made performance field required with default value of 'OK'
-- Added client-side validation to prevent NULL performance submissions
-- Updated database: converted all NULL and NONE performance values to 'OK'
-- Removed NONE from Performance enum (now only BAD, OK, GREAT)
-- Performance field is now NOT NULL in database with default 'OK'
-- Performance notes field always visible (no longer conditional)
-- Updated performance button grid from 4 columns to 3 columns
+- Added N/A option to performance selector (Bad, OK, Great, N/A)
+- N/A selection stores as 'NONE' in database (explicit choice vs NULL)
+- Made performance field required with default value of 'NONE'
+- Performance notes field only visible when performance is not N/A
+- Updated database: NONE enum value preserved for explicit "not rated" choice
+- Performance field is NOT NULL in database with default 'NONE'
+- Updated performance button grid to 4 columns
 
