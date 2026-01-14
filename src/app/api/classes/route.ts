@@ -100,14 +100,15 @@ export async function POST(req: Request) {
     }
 
     // Normalize performance to match DB enum (NONE | BAD | OK | GREAT)
-    const allowedPerformance = new Set(['NONE', 'BAD', 'OK', 'GREAT']);
-    const normalizedPerformance = body.performance
-      ? String(body.performance).toUpperCase()
-      : null;
-    const performanceValue =
-      normalizedPerformance && allowedPerformance.has(normalizedPerformance)
-        ? normalizedPerformance
-        : null;
+    const performanceValue = (() => {
+      if (!body.performance) return 'NONE';
+      const s = String(body.performance).toLowerCase().trim();
+      if (s === 'n/a' || s === 'na' || s === 'none') return 'NONE';
+      if (s === 'bad' || s.includes('bad')) return 'BAD';
+      if (s === 'ok' || s === 'mediocre' || s.includes('ok')) return 'OK';
+      if (s === 'great' || s.includes('great')) return 'GREAT';
+      return 'NONE';
+    })();
 
     let hoursVal: number | null = null;
     const rawHours = (body as any).hours;
