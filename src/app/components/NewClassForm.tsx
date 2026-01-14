@@ -117,7 +117,6 @@ export default function NewClassForm({
   const [styleValue, setStyleValue] = React.useState<string>(initialData?.style || "nogi");
   // Performance (self-assessment)
   const PERFORMANCE_OPTIONS = [
-    { key: "None",     label: "🚫 N/A" },
     { key: "Bad",      label: "😕 Bad" },
     { key: "Mediocre", label: "🙂 OK" },
     { key: "Great",    label: "💪 Great" },
@@ -134,7 +133,7 @@ export default function NewClassForm({
   }
 
   const [performanceValue, setPerformanceValue] = React.useState<string>(
-    normalizePerformance(initialData?.performance)
+    () => normalizePerformance(initialData?.performance) || "Mediocre"
   );
   const TECHNIQUE_OPTIONS = [
     "Passing",
@@ -254,10 +253,44 @@ export default function NewClassForm({
     };
   }, [insOpen]);
 
-  // When the drawer opens with existing data, ensure performance is seeded correctly
+  // When the drawer opens with existing data, ensure all state is re-seeded correctly
   React.useEffect(() => {
     if (!open) return;
-    setPerformanceValue(normalizePerformance(initialData?.performance));
+    
+    // Re-seed performance value
+    const s = String(initialData?.performance ?? "").toLowerCase().trim();
+    let perfValue = "Mediocre"; // default to Mediocre instead of None
+    if (s && s !== "none" && s !== "null") {
+      if (s.includes("great") || s.includes("💪")) perfValue = "Great";
+      else if (s.includes("mediocre") || s.includes("ok") || s.includes("🙂")) perfValue = "Mediocre";
+      else if (s.includes("bad") || s.includes("😕")) perfValue = "Bad";
+    }
+    setPerformanceValue(perfValue);
+    
+    // Re-seed class types
+    const newClassTypes = initialData?.classType
+      ? String(initialData.classType)
+          .split(",")
+          .map((s: string) => s.trim())
+          .filter(Boolean)
+      : ["Advanced"];
+    setClassTypes(newClassTypes);
+    
+    // Re-seed technique tags
+    const newTechniqueTags = initialData?.technique
+      ? String(initialData.technique)
+          .split(",")
+          .map((s: string) => s.trim())
+          .filter(Boolean)
+      : [];
+    setTechniqueTags(newTechniqueTags);
+    
+    // Re-seed instructor
+    setInstructorValue(initialData?.instructor || "Kieran Davern");
+    
+    // Re-seed style
+    setStyleValue(initialData?.style || "nogi");
+    
     // Seed mode and drilling location when editing an existing row
     try {
       const ct = String(initialData?.classType || "").toLowerCase();
@@ -297,7 +330,7 @@ export default function NewClassForm({
         return Number.isFinite(n) ? n : undefined;
       })(),
       style: styleValue,
-      performance: performanceValue === "None" ? null : performanceValue,
+      performance: performanceValue,
       performanceNotes: ((): string | undefined => {
         const v = String(fd.get("performanceNotes") || "").trim();
         return v ? v : undefined;
@@ -313,6 +346,13 @@ export default function NewClassForm({
     if (!payload.date) {
       setSubmitting(false);
       setError("Date is required");
+      return;
+    }
+    
+    // Validate performance is set for class mode
+    if (mode === "class" && (!payload.performance || payload.performance === "None")) {
+      setSubmitting(false);
+      setError("Performance rating is required");
       return;
     }
 
@@ -852,7 +892,7 @@ export default function NewClassForm({
                 <div>
                   {/* keep form data consistent */}
                   <input type="hidden" name="performance" value={performanceValue} />
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6 }}>
                     {PERFORMANCE_OPTIONS.map((opt) => {
                       const active = performanceValue === opt.key;
                       return (
@@ -879,18 +919,16 @@ export default function NewClassForm({
                     })}
                   </div>
                 </div>
-                {performanceValue !== "None" && (
-                  <div>
-                    <label style={input.label}>Notes</label>
-                    <textarea
-                      name="performanceNotes"
-                      rows={4}
-                      placeholder="What went well / needs work"
-                      style={{ ...input.base, resize: "vertical" }}
-                      defaultValue={initialData?.performanceNotes || ""}
-                    />
-                  </div>
-                )}
+                <div>
+                  <label style={input.label}>Notes</label>
+                  <textarea
+                    name="performanceNotes"
+                    rows={4}
+                    placeholder="What went well / needs work"
+                    style={{ ...input.base, resize: "vertical" }}
+                    defaultValue={initialData?.performanceNotes || ""}
+                  />
+                </div>
               </div>
 
               <div>

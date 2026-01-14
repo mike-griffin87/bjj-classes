@@ -15,6 +15,8 @@ type ClassRow = {
   hours?: number;
   style: string;
   url?: string;
+  performance?: string;
+  performanceNotes?: string;
 };
 
 export default function ClassesView({ classes }: { classes: ClassRow[] }) {

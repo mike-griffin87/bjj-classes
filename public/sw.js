@@ -1,6 +1,6 @@
 /* Minimal PWA service worker for BJJ Classes
    Update SW_VERSION when you bump the app version to refresh caches. */
-const SW_VERSION = 'v1.2';
+const SW_VERSION = 'v1.01';
 const CACHE_NAME = `bjj-classes-${SW_VERSION}`;
 const PRECACHE_URLS = [
   '/',

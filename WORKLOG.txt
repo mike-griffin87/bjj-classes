@@ -1,5 +1,5 @@
 Version: 1.00
-Date: 2025-12-24
+Date: December 24, 2025
 Branch: feature-drilling-hours
 
 Drilling Feature - Complete Implementation:
@@ -16,3 +16,26 @@ Drilling Feature - Complete Implementation:
 - Empty months now display in gray with 0 values
 - Fixed hydration errors by implementing client-only rendering for metric pills
 - Form refactored to unified structure with visibility control via CSS display:none
+
+---
+
+Version: 1.01
+Date: January 14, 2026
+Branch: main
+
+Bug Fixes & Security:
+- Secured _prisma_migrations table with RLS policy (deny-all for public, service role bypasses)
+- Fixed performance field not showing when editing existing classes (added to ClassRow type)
+- Fixed "Invalid ID" error when updating classes (Next.js 15 params are now async Promises)
+- Enhanced form state management to properly re-seed all fields when editing (performance, classTypes, techniques, instructor, style)
+
+Performance Validation & Database Schema:
+- Removed "None/N/A" option from performance selector (now only Bad, OK, Great)
+- Made performance field required with default value of 'OK'
+- Added client-side validation to prevent NULL performance submissions
+- Updated database: converted all NULL and NONE performance values to 'OK'
+- Removed NONE from Performance enum (now only BAD, OK, GREAT)
+- Performance field is now NOT NULL in database with default 'OK'
+- Performance notes field always visible (no longer conditional)
+- Updated performance button grid from 4 columns to 3 columns
+

@@ -389,7 +389,7 @@ export default function GoalSettings({
             style={itemStyle("update")}
           >
             <IconRefresh size={18} stroke={1.8} color="#6b7280" />
-            <span>Update app</span>
+            <span>Sync app</span>
           </button>
           <button
             role="menuitem"

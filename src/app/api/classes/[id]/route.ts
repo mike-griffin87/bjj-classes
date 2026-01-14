@@ -24,14 +24,14 @@ function normalizeStyle(v: unknown): "gi" | "nogi" | null {
   return low === "gi" || low === "nogi" ? (low as "gi" | "nogi") : null;
 }
 
-function normalizePerformance(v: unknown): "NONE" | "BAD" | "OK" | "GREAT" {
-  if (v === undefined || v === null) return "NONE";
+function normalizePerformance(v: unknown): "BAD" | "OK" | "GREAT" | null {
+  if (v === undefined || v === null) return null;
   const s = String(v).trim().toLowerCase();
-  if (["none", "n/a", "na", "not added", "notadded"].includes(s)) return "NONE";
+  if (["none", "n/a", "na", "not added", "notadded"].includes(s)) return null;
   if (["bad", "poor", "rough", "😕"].includes(s)) return "BAD";
   if (["ok", "okay", "mediocre", "avg", "average", "🙂"].includes(s)) return "OK";
   if (["great", "good", "strong", "awesome", "💪"].includes(s)) return "GREAT";
-  return "NONE";
+  return null;
 }
 
 // Build a partial update object from arbitrary input
@@ -73,9 +73,10 @@ function buildUpdate(data: any) {
   return out;
 }
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const id = Number(params.id);
+    const { id: idParam } = await params;
+    const id = Number(idParam);
     if (!Number.isFinite(id)) {
       return NextResponse.json({ error: "Invalid id" }, { status: 400 });
     }
@@ -111,10 +112,11 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   }
 }
 
-export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const supabase = getAdminSupabase();
-    const id = Number(params.id);
+    const { id: idParam } = await params;
+    const id = Number(idParam);
     if (!Number.isFinite(id)) {
       return NextResponse.json({ error: "Invalid id" }, { status: 400 });
     }
@@ -143,6 +145,6 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
 }
 
 // PATCH behaves like PUT (partial update)
-export async function PATCH(req: Request, ctx: { params: { id: string } }) {
+export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
   return PUT(req, ctx);
 }
